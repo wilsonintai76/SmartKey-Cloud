@@ -39,6 +39,8 @@ export const KeyCard: React.FC<KeyCardProps> = ({
   const isEffectivelyLocked = (slot.isLocked || false) || isSystemLocked;
   
   const handleKeyWithdrawn = () => {
+    // Guard: skip if microswitch already detected the physical removal
+    if (slot.status !== KeyStatus.UNLOCKED) return;
     if (currentUser && onUpdateSlot && onAddLog) {
       onUpdateSlot(slot.id, {
         status: KeyStatus.BORROWED,

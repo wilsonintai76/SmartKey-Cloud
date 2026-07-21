@@ -16,6 +16,81 @@ The **SmartKey Key Cabinet** is a PWA-controlled IoT key management system. An E
 
 ---
 
+## Hardware Wiring Schematic
+
+```
+                    ESP32 Dev Board
+                   ┌──────────────┐
+                   │              │
+                   │    GPIO4 ────┼─────[1kΩ]────┐
+                   │              │              │
+                   │    GPIO5 ────┼──┬──[10kΩ]───3.3V
+                   │              │  │           │
+                   │     3.3V ────┼──┤           │
+                   │              │  │           │
+                   │     GND  ────┼──┴───────────GND
+                   │              │
+                   │    GPIO2 ────┼─────[220Ω]───▶├──GND
+                   └──────────────┘               LED
+```
+
+### ① Relay / Solenoid Lock (GPIO4)
+
+```
+       GPIO4 ───[1kΩ]───┬───────┬─── 12V
+                        │       │
+                        │     ┌─┴─┐
+                   NPN  │     │   │ Solenoid
+                  2N2222│     │   │ Lock
+                        │     └─┬─┘
+                        │       │
+                       GND    ──┴── GND
+
+  ⚠️ Flyback Diode: 1N4007 across solenoid coil
+     (Cathode → 12V, Anode → Collector)
+     Protects transistor from voltage spike when relay turns OFF.
+```
+
+### ② Microswitch — Key Detection (GPIO5)
+
+```
+       GPIO5 ───┬─────────── SW ──── GND
+                │
+              [10kΩ]
+                │
+               3.3V
+
+  NC (Normally Closed): key IN → GPIO5 = LOW
+  NO (Normally Open):  key OUT → GPIO5 = HIGH (pull-up)
+  Config: INPUT_PULLUP — internal pull-up active
+```
+
+### ③ Status LED (GPIO2)
+
+```
+       GPIO2 ───[220Ω]───▶├─── GND
+                          LED
+  ON  = Phone connected via BLE
+  OFF = Disconnected / advertising
+```
+
+### 🛒 Bill of Materials
+
+| Qty | Component | Value | Notes |
+|---|---|---|---|
+| 1 | ESP32 Dev Board | WROOM-32 | Any variant |
+| 1 | NPN Transistor | 2N2222 | Switch relay from 3.3V GPIO |
+| 1 | Flyback Diode | **1N4007** | Across solenoid coil |
+| 1 | Solenoid Lock | 12V DC | Door actuator |
+| 1 | Microswitch | NC type | Key presence sensor |
+| 1 | LED | 5mm | Status indicator |
+| 1 | Resistor | 1kΩ | Base current limit |
+| 1 | Resistor | 10kΩ | Pull-up for microswitch |
+| 1 | Resistor | 220Ω | LED current limit |
+| 1 | 12V Power Supply | 2A | External power for solenoid |
+
+---
+
 ## BLE-First Architecture
 The system communicates directly with the ESP32 Dev Board via Bluetooth Low Energy (Web Bluetooth API). No WiFi, no MQTT, no external storage required.
 

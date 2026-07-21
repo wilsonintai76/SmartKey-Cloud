@@ -114,13 +114,72 @@ export const App: React.FC = () => {
     return () => unsub();
   }, []);
 
-  // ── BLE Key Presence → IndexedDB ────────────────────────────────
+  // ── BLE Key Presence → IndexedDB + Slot State ──────────────────
   useEffect(() => {
     const unsub = bluetoothService.onKeyPresence(keyPresent => {
       const action = keyPresent ? 'RETURNED' : 'TAKEN';
       keyCabinetDB.addLog({ userId: user?.id || 'unknown', userName: user?.name || 'Unknown', action, slotLabel: 'Cabinet', timestamp: Date.now() })
         .then(() => { if (navigator.onLine) syncLogs().catch(() => {}); })
         .catch(err => console.warn('IndexedDB write failed:', err));
+
+      // ── Update slot state from hardware microswitch ─────────────
+      setSlots(prev => {
+        if (!keyPresent) {
+          // Key physically removed: transition UNLOCKED → BORROWED (or AVAILABLE → BORROWED for forced removal)
+          const targetIdx = prev.findIndex(s => s.status === KeyStatus.UNLOCKED);
+          if (targetIdx === -1) {
+            // Fallback: if no unlocked slot, mark first AVAILABLE as BORROWED (forced removal)
+            const availIdx = prev.findIndex(s => s.status === KeyStatus.AVAILABLE);
+            if (availIdx === -1) return prev;
+            const updated = [...prev];
+            updated[availIdx] = {
+              ...updated[availIdx],
+              status: KeyStatus.BORROWED,
+              borrowedBy: user?.name || 'Unknown',
+              borrowerId: user?.id || 'unknown',
+              borrowedAt: new Date().toISOString(),
+              usageCount: updated[availIdx].usageCount + 1,
+            };
+            return updated;
+          }
+          const updated = [...prev];
+          updated[targetIdx] = {
+            ...updated[targetIdx],
+            status: KeyStatus.BORROWED,
+            borrowedBy: user?.name || 'Unknown',
+            borrowerId: user?.id || 'unknown',
+            borrowedAt: new Date().toISOString(),
+            usageCount: updated[targetIdx].usageCount + 1,
+          };
+          return updated;
+        } else {
+          // Key physically returned: transition BORROWED → AVAILABLE (or UNLOCKED → AVAILABLE)
+          const targetIdx = prev.findIndex(s => s.status === KeyStatus.BORROWED);
+          if (targetIdx === -1) {
+            // Fallback: if no borrowed slot, reset first UNLOCKED to AVAILABLE
+            const unlockedIdx = prev.findIndex(s => s.status === KeyStatus.UNLOCKED);
+            if (unlockedIdx === -1) return prev;
+            const updated = [...prev];
+            updated[unlockedIdx] = {
+              ...updated[unlockedIdx],
+              status: KeyStatus.AVAILABLE,
+              borrowedBy: undefined,
+              borrowerId: undefined,
+              borrowedAt: undefined,
+            };
+            return updated;
+          }
+          const updated = [...prev];
+          updated[targetIdx] = {
+            ...updated[targetIdx],
+            status: KeyStatus.AVAILABLE,
+            borrowedBy: undefined,
+            borrowerId: undefined,
+            borrowedAt: undefined,
+          };
+          return updated;
+        }
+      });
     });
     return () => unsub();
   }, [user]);
