@@ -14,27 +14,27 @@ export interface WebAuthnUser {
 // ── Registration ──────────────────────────────────────────────────
 
 export async function beginRegistration(username: string) {
-  const res = await fetch(${API_BASE}/register/begin, {
+  const res = await fetch(`${API_BASE}/register/begin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).error || Registration start failed ());
+    throw new Error((err as any).error || 'Registration start failed');
   }
   return res.json();
 }
 
 export async function completeRegistration(userId: string, attestationResponse: any) {
-  const res = await fetch(${API_BASE}/register/complete, {
+  const res = await fetch(`${API_BASE}/register/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, attestationResponse }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).error || Registration verification failed ());
+    throw new Error((err as any).error || 'Registration verification failed');
   }
   return res.json();
 }
@@ -42,27 +42,27 @@ export async function completeRegistration(userId: string, attestationResponse: 
 // ── Authentication ────────────────────────────────────────────────
 
 export async function beginAuthentication(username: string) {
-  const res = await fetch(${API_BASE}/auth/begin, {
+  const res = await fetch(`${API_BASE}/auth/begin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).error || Auth start failed ());
+    throw new Error((err as any).error || 'Auth start failed');
   }
   return res.json();
 }
 
 export async function completeAuthentication(assertionResponse: any, challenge: string) {
-  const res = await fetch(${API_BASE}/auth/complete, {
+  const res = await fetch(`${API_BASE}/auth/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ assertionResponse, challenge }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).error || Authentication failed ());
+    throw new Error((err as any).error || 'Authentication failed');
   }
   return res.json();
 }

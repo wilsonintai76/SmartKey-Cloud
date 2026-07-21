@@ -10,7 +10,7 @@ The **SmartKey Key Cabinet** is a PWA-controlled IoT key management system. An E
 1.  **Flash the ESP32** — Open `firmware/KeyCabinet/KeyCabinet.ino` in Arduino IDE and upload to your ESP32 Dev Board.
 2.  **Start the PWA** — `npm install && npm run dev`
 3.  **Connect** — Open the PWA on Chrome/Edge (Android or desktop), tap "Connect to Cabinet", pair with the "KeyCabinet" BLE device.
-4.  **Login** — Use fingerprint/Face ID or a local Staff ID + PIN.
+4.  **Login** — Use fingerprint/Face ID or a local 4-Digit User ID + PIN.
 
 > **Hardware pins:** Relay → GPIO4, Microswitch → GPIO5, LED → GPIO2
 

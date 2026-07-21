@@ -26,12 +26,12 @@ export const IdentityList: React.FC<IdentityListProps> = ({
   onUpdateUserCredentials
 }) => {
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
-  const [editCabinetId, setEditCabinetId] = useState('');
+  const [editUserId, setEditUserId] = useState('');
   const [editPin, setEditPin] = useState('');
 
   const handleEditClick = (user: UserAccount) => {
     setEditingUser(user);
-    setEditCabinetId(user.cabinetId || '');
+    setEditUserId(user.userId || '');
     setEditPin(user.offlinePin || '');
   };
 
@@ -39,7 +39,7 @@ export const IdentityList: React.FC<IdentityListProps> = ({
     if (editingUser && onUpdateUserCredentials) {
       onUpdateUserCredentials({
         ...editingUser,
-        cabinetId: editCabinetId,
+        userId: editUserId,
         offlinePin: editPin
       });
       setEditingUser(null);
@@ -69,7 +69,7 @@ export const IdentityList: React.FC<IdentityListProps> = ({
           <tbody>
             {users.map(u => {
               const isBorrowing = isUserBorrowing(u.name);
-              const hasOffline = u.cabinetId && u.offlinePin;
+              const hasOffline = u.userId && u.offlinePin;
               return (
                 <tr key={u.id} className="border-b border-slate-50 group hover:bg-slate-50 transition-colors">
                   <td className="py-4 px-6">
@@ -155,8 +155,8 @@ export const IdentityList: React.FC<IdentityListProps> = ({
               
               <div className="space-y-3 mb-6">
                 <div>
-                   <label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">Cabinet User ID (4-Digit)</label>
-                   <input type="text" maxLength={4} value={editCabinetId} onChange={e => setEditCabinetId(e.target.value.replace(/[^0-9]/g, ''))} className="w-full bg-slate-50 border p-3 rounded-xl text-sm font-mono font-bold" placeholder="0000" />
+                   <label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">User ID (4-Digit)</label>
+                   <input type="text" maxLength={4} value={editUserId} onChange={e => setEditUserId(e.target.value.replace(/[^0-9]/g, ''))} className="w-full bg-slate-50 border p-3 rounded-xl text-sm font-mono font-bold" placeholder="0000" />
                 </div>
                 <div>
                    <label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">Keypad PIN (6-Digit)</label>

@@ -2,22 +2,22 @@
 # Cloudflare Worker (Hono) with D1 + KV
 # Deploy: npx wrangler deploy
 
-name = "key-cabinet-auth"
+name = "smartkey"
 main = "src/index.ts"
 compatibility_date = "2025-07-21"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "key-cabinet-db"
-database_id = "your-d1-database-id"
+database_id = "6df77da2-9d03-4112-87c7-6d8442010dc3"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "your-kv-namespace-id"
+id = "d245e7a0a7334fdd988d3528f3f0b355"
 
 [vars]
-RP_ID = "your-pwa-domain.com"
-ORIGIN = "https://your-pwa-domain.com"
+RP_ID = "localhost"
+ORIGIN = "http://localhost:3000"
 
 [dev]
 port = 8787

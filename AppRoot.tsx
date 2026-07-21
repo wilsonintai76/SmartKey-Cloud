@@ -136,18 +136,18 @@ export const App: React.FC = () => {
 
   // ── Helpers ─────────────────────────────────────────────────────
   const addLog = (userName: string, action: string, keyLabel: string, type: 'success' | 'warning' | 'info', userId?: string, slotId?: number) => {
-    const formattedAction = slotId !== undefined ? ${action}: Slot  -  : action;
+    const formattedAction = slotId !== undefined ? `${action}: Slot ${slotId}` : action;
     const newLog: LogEntry = { id: Date.now().toString(), timestamp: new Date().toLocaleString(), user: userName, userId: userId || user?.id, action: formattedAction, keyLabel, type };
     setLogs(prev => [newLog, ...prev]);
   };
 
-  const handleLocalLogin = (staffId: string, pin: string): boolean => {
-    const found = registeredUsers.find(u => (u.cabinetId === staffId || u.id === staffId) && u.offlinePin === pin);
+  const handleLocalLogin = (userId: string, pin: string): boolean => {
+    const found = registeredUsers.find(u => (u.userId === userId || u.id === userId) && u.offlinePin === pin);
     if (found) {
       setTimeout(() => {
         setUser(found);
         addLog(found.name, 'Local Login', 'System', 'success', found.id);
-        showToast({ title: 'Local Access Granted', message: Welcome, ., type: 'success' });
+        showToast({ title: 'Local Access Granted', message: `Welcome, ${found.name}`, type: 'success' });
         if (!isBluetoothConnected) bluetoothService.connect().catch(e => showGlobalError(e.message));
       }, 500);
       return true;
@@ -161,11 +161,43 @@ export const App: React.FC = () => {
     const u = found || { id: userId, name: userName, email: '', avatar: '', status: 'active' as const, role: 'staff' as const };
     setUser(u);
     addLog(u.name, 'Biometric Login', 'System', 'success', u.id);
-    showToast({ title: 'Biometric Verified', message: Welcome, ., type: 'success' });
+    showToast({ title: 'Biometric Verified', message: `Welcome, ${u.name}`, type: 'success' });
     if (!isBluetoothConnected) bluetoothService.connect().catch(e => showGlobalError(e.message));
   };
 
   const handleLogout = () => { setUser(null); setView('dashboard'); };
+
+  const handleFirstTimeSetup = (name: string, email: string, userId: string, pin: string) => {
+    const newAdmin: UserProfileData = {
+      id: crypto.randomUUID(),
+      name,
+      email: email || `${userId}@smartkey.local`,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0f172a&color=fff&size=128`,
+      status: 'active',
+      role: 'admin',
+      userId,
+      offlinePin: pin,
+    };
+    setRegisteredUsers(prev => [...prev, newAdmin]);
+    addLog(name, 'First Time Setup', 'System', 'success', newAdmin.id);
+    showToast({ title: 'Setup Complete', message: `Admin account created. Welcome, ${name}!`, type: 'success' });
+  };
+
+  const handleAddUser = (name: string, userId: string, pin: string, role: 'staff' | 'admin') => {
+    const newUser: UserProfileData = {
+      id: crypto.randomUUID(),
+      name,
+      email: `${userId}@smartkey.local`,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=475569&color=fff&size=128`,
+      status: 'active',
+      role,
+      userId,
+      offlinePin: pin,
+    };
+    setRegisteredUsers(prev => [...prev, newUser]);
+    addLog(user?.name || 'System', 'User Created', name, 'success', newUser.id);
+    showToast({ title: 'User Added', message: `${name} (${userId}) created as ${role}.`, type: 'success' });
+  };
 
   // ── Slot Actions (BLE-only) ─────────────────────────────────────
   const initiateUnlock = (id: number) => {
@@ -218,6 +250,7 @@ export const App: React.FC = () => {
     return (<>
       <ToastContainer toast={uiState.toast} globalError={uiState.globalError} onClearToast={clearToast} onClearGlobalError={clearGlobalError} />
       <Login onLogin={() => {}} onLocalLogin={handleLocalLogin} onWebAuthnLogin={handleWebAuthnLogin}
+        onFirstTimeSetup={handleFirstTimeSetup} isFirstTime={registeredUsers.length === 0}
         isAuthenticating={uiState.isAuthenticating} systemID={config.systemID} bluetoothStatus={bluetoothStatus} />
     </>);
   }
@@ -243,7 +276,7 @@ export const App: React.FC = () => {
         isPostEmergency={isPostEmergency} setIsPostEmergency={setIsPostEmergency} isHardwareTriggerActive={isHardwareTriggerActive}
         onViewChange={setView} onUpdateUI={updateUI} onShowToast={showToast} onAddLog={addLog}
         onExportLogs={() => {
-          const csv = 'data:text/csv;charset=utf-8,' + logs.map(e => ${e.timestamp},,,).join('\n');
+          const csv = 'data:text/csv;charset=utf-8,' + logs.map(e => `${e.timestamp},${e.user},${e.action},${e.keyLabel},${e.type}`).join('\n');
           window.open(encodeURI(csv));
         }}
         onInitiateUnlock={initiateUnlock} onUnlockDoor={handleUnlockDoor}
@@ -255,10 +288,11 @@ export const App: React.FC = () => {
         onUnlockUser={id => setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'active' } : u))}
         onDeleteUser={id => setRegisteredUsers(prev => prev.filter(u => u.id !== id))}
         onUpdateUserCredentials={updated => setRegisteredUsers(prev => prev.map(u => u.id === updated.id ? updated : u))}
+        onAddUser={handleAddUser}
         onAddModule={() => {
           setIsAddingModule(false);
           const newId = slots.length + 1;
-          setSlots([...slots, ...Array.from({ length: 4 }, (_, i) => ({ id: newId + i, label: Key , status: KeyStatus.AVAILABLE, usageCount: 0, lastUpdated: new Date().toISOString() } as KeySlot))]);
+          setSlots([...slots, ...Array.from({ length: 4 }, (_, i) => ({ id: newId + i, label: `Slot ${newId + i}`, status: KeyStatus.AVAILABLE, usageCount: 0, lastUpdated: new Date().toISOString() } as KeySlot))]);
         }}
         onDeleteModule={idx => { const start = idx * 4; setSlots(prev => { const n = [...prev]; n.splice(start, 4); return n; }); }}
         onUpdateSlotLabel={(id, label) => setSlots(prev => prev.map(s => s.id === id ? { ...s, label } : s))}

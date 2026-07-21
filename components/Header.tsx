@@ -55,11 +55,10 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className="text-[7px] md:text-[8px] font-black uppercase tracking-wider">
                       BLE {bluetoothStatus === 'connected' ? 'Active' : bluetoothStatus}
                     </span>
-                  </div>
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
 
             {/* Desktop View Switcher */}
             {!showSettings ? (

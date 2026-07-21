@@ -77,15 +77,15 @@ export const EmergencyBanners: React.FC<EmergencyBannersProps> = ({
                  <div>
                     <h3 className="text-lg font-black text-slate-900 leading-none">Manual Keypad Entry</h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                      Identity verified via Cabinet ID & Local PIN
+                      Identity verified via User ID & Local PIN
                     </p>
                  </div>
               </div>
 
               <div className="flex items-center gap-4 w-full md:w-auto">
                  <div className="flex-1 md:flex-none flex flex-col items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl min-w-[100px]">
-                    <span className="text-[9px] font-black uppercase text-slate-400">Cabinet ID</span>
-                    <span className="text-xl font-mono font-black text-slate-900">{user.cabinetId || '00'}</span>
+                    <span className="text-[9px] font-black uppercase text-slate-400">User ID</span>
+                    <span className="text-xl font-mono font-black text-slate-900">{user.userId || '00'}</span>
                  </div>
                  <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
                  <div className="flex-1 md:flex-none flex flex-col items-center gap-2">
@@ -108,7 +108,7 @@ export const EmergencyBanners: React.FC<EmergencyBannersProps> = ({
                     </div>
                     <div>
                        <p className="text-[11px] font-bold">Standard Hardware Entry:</p>
-                       <p className="text-[10px] text-slate-400 font-mono">CODE: [ID] * [PIN] # (e.g. {user.cabinetId || "01"} * {user.offlinePin || "****"} #)</p>
+                       <p className="text-[10px] text-slate-400 font-mono">CODE: [ID] * [PIN] # (e.g. {user.userId || "01"} * {user.offlinePin || "****"} #)</p>
                     </div>
                  </div>
                  <div className="h-px w-full md:w-px md:h-8 bg-white/10 hidden md:block"></div>

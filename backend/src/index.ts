@@ -11,7 +11,7 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.use('/*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://your-pwa-domain.com'],
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
   allowMethods: ['GET', 'POST', 'OPTIONS'],
   allowHeaders: ['Content-Type'],
 }));
@@ -20,5 +20,11 @@ app.route('/api/webauthn', registration);
 app.route('/api/webauthn', authentication);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
+
+app.get('/', (c) => c.json({
+  name: 'SmartKey API',
+  version: '3.0',
+  endpoints: ['/api/webauthn/register/begin', '/api/webauthn/register/complete', '/api/webauthn/auth/begin', '/api/webauthn/auth/complete', '/api/health'],
+}));
 
 export default app;

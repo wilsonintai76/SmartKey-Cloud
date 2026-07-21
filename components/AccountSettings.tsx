@@ -12,11 +12,11 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ user, setUser,
   const [email] = useState(user.email); // Read-only for now
   const [phone, setPhone] = useState(user.phone || '');
   const [macAddress, setMacAddress] = useState(user.macAddress || '');
-  const [cabinetId, setCabinetId] = useState(user.cabinetId || '');
+  const [userId, setUserId] = useState(user.userId || '');
   const [offlinePin, setOfflinePin] = useState(user.offlinePin || '');
 
   const handleSave = () => {
-    setUser({ ...user, name, phone, macAddress, cabinetId, offlinePin });
+    setUser({ ...user, name, phone, macAddress, userId, offlinePin });
     onShowToast({
       title: 'Profile Updated',
       message: 'Identity and Digital Binding credentials synchronized.',
@@ -112,12 +112,12 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ user, setUser,
            <h4 className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-4">Manual Offline Credentials (Fallback)</h4>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block ml-1">Cabinet User ID (4-Digit)</label>
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block ml-1">User ID (4-Digit)</label>
                 <input 
                   type="text" 
                   maxLength={4}
-                  value={cabinetId}
-                  onChange={(e) => setCabinetId(e.target.value.replace(/[^0-9]/g, ''))}
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="e.g. 1024"
                   className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm font-mono font-bold text-slate-800 focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/5 transition-all outline-none" 
                 />

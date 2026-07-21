@@ -4,8 +4,10 @@ import { useWebAuthn } from '../hooks/useWebAuthn';
 
 interface LoginProps {
   onLogin: () => void;
-  onLocalLogin: (staffId: string, pin: string) => boolean | Promise<boolean>;
+  onLocalLogin: (userId: string, pin: string) => boolean | Promise<boolean>;
   onWebAuthnLogin?: (userId: string, userName: string) => void;
+  onFirstTimeSetup?: (name: string, email: string, userId: string, pin: string) => void;
+  isFirstTime?: boolean;
   isAuthenticating: boolean;
   systemID: string;
   isConnecting?: boolean; 
@@ -16,15 +18,22 @@ export const Login: React.FC<LoginProps> = ({
   onLogin, 
   onLocalLogin,
   onWebAuthnLogin,
+  onFirstTimeSetup,
+  isFirstTime = false,
   isAuthenticating, 
   systemID,
   isConnecting = false,
   bluetoothStatus = 'disconnected'
 }) => {
-  const [mode, setMode] = useState<'offline_menu' | 'offline_pin'>('offline_menu');
-  const [staffId, setStaffId] = useState('');
+  const [mode, setMode] = useState<'offline_menu' | 'offline_pin' | 'setup'>(isFirstTime ? 'setup' : 'offline_menu');
+  const [userId, setUserId] = useState('');
   const [pin, setPin] = useState('');
   const [offlineStatus, setOfflineStatus] = useState('');
+  const [setupName, setSetupName] = useState('');
+  const [setupEmail, setSetupEmail] = useState('');
+  const [setupUserId, setSetupUserId] = useState('');
+  const [setupPin, setSetupPin] = useState('');
+  const [setupStatus, setSetupStatus] = useState('');
   const [discoveredDevices, setDiscoveredDevices] = useState<BluetoothDevice[]>([]);
   const [fingerprintStatus, setFingerprintStatus] = useState('');
   const [fingerprintUsername, setFingerprintUsername] = useState('');
@@ -49,11 +58,11 @@ export const Login: React.FC<LoginProps> = ({
   }, [mode]);
 
   const handleManualOfflineAuth = async () => {
-    if (!staffId || !pin) return;
+    if (!userId || !pin) return;
     setOfflineStatus('Verifying Local Identity...');
     
     try {
-      const success = await Promise.resolve(onLocalLogin(staffId, pin));
+      const success = await Promise.resolve(onLocalLogin(userId, pin));
       if (success) {
         setOfflineStatus('Success! Local Access Granted.');
       } else {
@@ -77,6 +86,17 @@ export const Login: React.FC<LoginProps> = ({
     // On success, the useEffect above will call onWebAuthnLogin via webAuthnUser
   };
 
+  const handleFirstTimeSetupSubmit = () => {
+    if (!setupName.trim() || !setupUserId || setupUserId.length !== 4 || !setupPin || setupPin.length < 4) {
+      setSetupStatus('Please fill all fields. User ID must be 4 digits, PIN at least 4 digits.');
+      return;
+    }
+    setSetupStatus('Creating admin account...');
+    onFirstTimeSetup?.(setupName.trim(), setupEmail.trim(), setupUserId, setupPin);
+    setSetupStatus('Account created! Redirecting to login...');
+    setTimeout(() => setMode('offline_menu'), 1500);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6">
       <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-md w-full text-center animate-fadeIn border-t-8 border-blue-600 relative overflow-hidden">
@@ -93,6 +113,55 @@ export const Login: React.FC<LoginProps> = ({
           <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">SmartKey Full-Stack</h1>
           <p className="text-slate-500 mb-8 text-sm font-bold uppercase tracking-widest opacity-60">Integrated IoT Control Panel</p>
           
+          {mode === 'setup' && (
+             <div className="space-y-4 animate-fadeIn text-left">
+                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-emerald-800 text-xs font-medium mb-4">
+                  <p className="font-black uppercase mb-1">🔐 First Time Setup</p>
+                  Create your admin account. User ID must be exactly 4 digits, PIN at least 4 digits.
+                </div>
+
+                <div>
+                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Full Name</label>
+                   <input type="text" value={setupName} onChange={e => setSetupName(e.target.value)}
+                     placeholder="e.g. Ahmad Zaki"
+                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                </div>
+
+                <div>
+                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Email (optional)</label>
+                   <input type="email" value={setupEmail} onChange={e => setSetupEmail(e.target.value)}
+                     placeholder="admin@workshop.com"
+                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                     <label className="text-[9px] font-black uppercase text-slate-400 ml-1">User ID (4-Digit)</label>
+                     <input type="text" maxLength={4} value={setupUserId} onChange={e => setSetupUserId(e.target.value.replace(/[^0-9]/g, ''))}
+                       placeholder="0000"
+                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400" />
+                  </div>
+                  <div>
+                     <label className="text-[9px] font-black uppercase text-slate-400 ml-1">PIN (4-6 Digit)</label>
+                     <input type="password" maxLength={6} value={setupPin} onChange={e => setSetupPin(e.target.value.replace(/[^0-9]/g, ''))}
+                       placeholder="••••••"
+                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400" />
+                  </div>
+                </div>
+
+                {setupStatus && (
+                  <p className={`text-[10px] font-bold text-center uppercase ${setupStatus.includes('created') ? 'text-emerald-500' : setupStatus.includes('fill') ? 'text-amber-500' : 'text-blue-500'}`}>
+                    {setupStatus}
+                  </p>
+                )}
+
+                <button onClick={handleFirstTimeSetupSubmit}
+                  className="w-full py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-200 mt-2">
+                  Create Admin Account
+                </button>
+             </div>
+          )}
+
           {mode === 'offline_menu' && (
              <div className="space-y-4 animate-fadeIn">
                 <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-amber-800 text-xs font-medium mb-4">
@@ -170,7 +239,7 @@ export const Login: React.FC<LoginProps> = ({
                    className="w-full py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600"
                  >
                    <i className="fa-solid fa-keyboard"></i>
-                   Manual Staff ID / PIN
+                   Manual User ID / PIN
                  </button>
              </div>
           )}
@@ -178,12 +247,13 @@ export const Login: React.FC<LoginProps> = ({
           {mode === 'offline_pin' && (
              <div className="space-y-4 animate-fadeIn text-left">
                 <div>
-                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Staff ID / Cabinet ID</label>
+                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">User ID (4-Digit)</label>
                    <input 
                      type="text" 
-                     placeholder="ID-001"
-                     value={staffId}
-                     onChange={(e) => setStaffId(e.target.value)}
+                     maxLength={4}
+                     placeholder="0000"
+                     value={userId}
+                     onChange={(e) => setUserId(e.target.value.replace(/[^0-9]/g, ''))}
                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-amber-400"
                    />
                 </div>
@@ -192,7 +262,7 @@ export const Login: React.FC<LoginProps> = ({
                    <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Personal Secure PIN</label>
                    <input 
                      type="password" 
-                     placeholder="•••••"
+                     placeholder="••••••"
                      maxLength={6}
                      value={pin}
                      onChange={(e) => setPin(e.target.value)}

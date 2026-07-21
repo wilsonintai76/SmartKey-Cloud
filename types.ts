@@ -38,7 +38,7 @@ export interface UserAccount {
   avatar: string;
   phone?: string;
   macAddress?: string; // Digital Binding for Offline Access
-  cabinetId?: string;  // New: 4-Digit ID for Manual Offline
+  userId?: string;  // 4-Digit User ID for Manual Offline Login
   offlinePin?: string; // New: Simple PIN for Manual Offline
 }
 
