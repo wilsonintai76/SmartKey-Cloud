@@ -1,0 +1,163 @@
+
+import React, { useState } from 'react';
+
+interface AccountSettingsProps {
+  user: any;
+  setUser: (user: any) => void;
+  onShowToast: (toast: any) => void;
+}
+
+export const AccountSettings: React.FC<AccountSettingsProps> = ({ user, setUser, onShowToast }) => {
+  const [name, setName] = useState(user.name);
+  const [email] = useState(user.email); // Read-only for now
+  const [phone, setPhone] = useState(user.phone || '');
+  const [macAddress, setMacAddress] = useState(user.macAddress || '');
+  const [cabinetId, setCabinetId] = useState(user.cabinetId || '');
+  const [offlinePin, setOfflinePin] = useState(user.offlinePin || '');
+
+  const handleSave = () => {
+    setUser({ ...user, name, phone, macAddress, cabinetId, offlinePin });
+    onShowToast({
+      title: 'Profile Updated',
+      message: 'Identity and Digital Binding credentials synchronized.',
+      type: 'success'
+    });
+  };
+
+  return (
+    <div className="space-y-10 animate-fadeIn">
+      <div>
+        <h3 className="text-2xl font-black text-slate-900 mb-2">Account Information</h3>
+        <p className="text-xs text-slate-500 font-medium">Manage your identity profile and Digital Binding credentials.</p>
+      </div>
+
+      <div className="space-y-8">
+        {/* Avatar Section */}
+        <div className="flex items-center gap-6">
+          <div className="relative group cursor-pointer">
+            <img 
+              src={user.avatar} 
+              className="w-24 h-24 rounded-[32px] border-4 border-slate-50 shadow-xl group-hover:opacity-80 transition-opacity" 
+              alt="Profile" 
+            />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              <i className="fa-solid fa-camera text-white text-xl"></i>
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Profile Avatar</p>
+            <div className="flex gap-2">
+              <button className="px-4 py-2 bg-slate-100 text-slate-700 text-[10px] font-black uppercase rounded-xl hover:bg-slate-200 transition-colors">Change Photo</button>
+              <button className="px-4 py-2 text-rose-500 text-[10px] font-black uppercase rounded-xl hover:bg-rose-50 transition-colors">Remove</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block ml-1">Full Name</label>
+            <input 
+              type="text" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none" 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block ml-1">Email Address</label>
+            <div className="relative">
+              <input 
+                type="email" 
+                value={email}
+                readOnly
+                className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm font-bold text-slate-400 cursor-not-allowed outline-none" 
+              />
+              <i className="fa-solid fa-lock absolute right-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block ml-1">Hand Phone Number</label>
+            <div className="relative">
+              <input 
+                type="tel" 
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+60 12-345 6789"
+                className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none" 
+              />
+              <i className="fa-solid fa-phone absolute right-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block ml-1 flex items-center gap-2">
+               Device MAC Address
+               <i className="fa-solid fa-circle-info text-blue-400" title="Required for Offline/Emergency Access. Input the MAC address of the device you will use during internet outages."></i>
+            </label>
+            <div className="relative">
+              <input 
+                type="text" 
+                value={macAddress}
+                onChange={(e) => setMacAddress(e.target.value.toUpperCase())}
+                placeholder="00:1A:2B:3C:4D:5E"
+                className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm font-mono font-bold text-slate-800 focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none" 
+              />
+              <i className="fa-solid fa-network-wired absolute right-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+            </div>
+          </div>
+        </div>
+
+        {/* Offline Fallback Section */}
+        <div className="pt-6 border-t border-slate-100">
+           <h4 className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-4">Manual Offline Credentials (Fallback)</h4>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block ml-1">Cabinet User ID (4-Digit)</label>
+                <input 
+                  type="text" 
+                  maxLength={4}
+                  value={cabinetId}
+                  onChange={(e) => setCabinetId(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="e.g. 1024"
+                  className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm font-mono font-bold text-slate-800 focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/5 transition-all outline-none" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block ml-1">Offline PIN (6-Digit)</label>
+                <div className="relative">
+                  <input 
+                    type="password" 
+                    maxLength={6}
+                    value={offlinePin}
+                    onChange={(e) => setOfflinePin(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="******"
+                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm font-mono font-bold text-slate-800 focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/5 transition-all outline-none" 
+                  />
+                  <i className="fa-solid fa-key absolute right-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                </div>
+              </div>
+           </div>
+           <p className="text-[9px] text-slate-400 mt-2 ml-1">
+             Used for manual login at the physical terminal if the internet is down and MAC address binding fails.
+           </p>
+        </div>
+
+        <div className="p-6 bg-blue-50 rounded-[32px] border border-blue-100 flex items-center gap-4">
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+            <i className="fa-solid fa-shield-halved"></i>
+          </div>
+          <p className="text-[11px] text-blue-800 font-medium leading-relaxed">
+            <span className="font-black uppercase">Digital Binding:</span> Your credentials are cached on the Controller's Internal Flash (LittleFS). This allows you to access the system via Emergency Hotspot even when the internet is down.
+          </p>
+        </div>
+
+        <button 
+          onClick={handleSave}
+          className="bg-slate-900 text-white px-8 py-4 rounded-2xl text-xs font-black uppercase shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all"
+        >
+          Save Identity Changes
+        </button>
+      </div>
+    </div>
+  );
+};

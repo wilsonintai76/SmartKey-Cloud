@@ -1,0 +1,21 @@
+{
+  "name": "SmartKey Cloud IoT",
+  "short_name": "SmartKey",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "IoT Smart Key Management System Control Panel",
+  "icons": [
+    {
+      "src": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/google-home.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/google-home.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartKey FYP Dashboard</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/google-home.png">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <style>
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #cbd5e1;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.4s ease-out forwards;
+      }
+      /* Markdown Content Styles */
+      .markdown-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 0.5rem 0;
+        font-size: 0.7rem;
+      }
+      .markdown-content th, .markdown-content td {
+        border: 1px solid #e2e8f0;
+        padding: 0.5rem;
+        text-align: left;
+      }
+      .markdown-content th {
+        background-color: #f8fafc;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #475569;
+      }
+      .markdown-content p {
+        margin-bottom: 0.75rem;
+      }
+      .markdown-content p:last-child {
+        margin-bottom: 0;
+      }
+      .markdown-content ul {
+        list-style-type: disc;
+        padding-left: 1.2rem;
+        margin-bottom: 0.75rem;
+      }
+      .markdown-content ol {
+        list-style-type: decimal;
+        padding-left: 1.2rem;
+        margin-bottom: 0.75rem;
+      }
+      .markdown-content strong {
+        font-weight: 800;
+      }
+      /* Chat bubble specific overrides */
+      .bg-blue-600 .markdown-content th {
+        background-color: #2563eb; 
+        color: white;
+        border-color: #60a5fa;
+      }
+      .bg-blue-600 .markdown-content td, .bg-blue-600 .markdown-content th {
+        border-color: #60a5fa;
+      }
+      .bg-blue-600 .markdown-content a {
+        color: #bfdbfe;
+        text-decoration: underline;
+      }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

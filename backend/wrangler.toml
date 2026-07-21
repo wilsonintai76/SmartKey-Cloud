@@ -1,0 +1,23 @@
+# Key Cabinet WebAuthn Backend
+# Cloudflare Worker (Hono) with D1 + KV
+# Deploy: npx wrangler deploy
+
+name = "key-cabinet-auth"
+main = "src/index.ts"
+compatibility_date = "2025-07-21"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "key-cabinet-db"
+database_id = "your-d1-database-id"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "your-kv-namespace-id"
+
+[vars]
+RP_ID = "your-pwa-domain.com"
+ORIGIN = "https://your-pwa-domain.com"
+
+[dev]
+port = 8787

@@ -1,0 +1,17 @@
+{
+  "name": "key-cabinet-auth",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 execute key-cabinet-db --file=./migrations/0001_init.sql"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^10.0.0",
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250721.0",
+    "wrangler": "^3.0.0"
+  }
+}

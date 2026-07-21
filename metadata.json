@@ -1,0 +1,9 @@
+{
+  "name": "SMART KEY V3",
+  "description": "High-fidelity React dashboard for IoT FYP monitoring and remote solenoid control.",
+  "requestFramePermissions": [
+    "camera",
+    "bluetooth"
+  ],
+  "majorCapabilities": []
+}
