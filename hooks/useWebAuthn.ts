@@ -79,18 +79,28 @@ export function useWebAuthn(): UseWebAuthnReturn {
     try {
       // 1. Get registration options from server
       const options = await beginRegistration(username);
-      console.log('[WebAuthn] Registration options from server:', {
-        rpId: options.rp?.id,
+
+      // Strip non-WebAuthn fields before passing to browser API
+      const { alreadyRegistered, ...webAuthnOptions } = options;
+
+      console.log('[WebAuthn] Enrolling:', {
+        rpId: webAuthnOptions.rp?.id,
         origin: window.location.origin,
         isSecureContext: window.isSecureContext,
-        fullOptions: options,
+        alreadyRegistered,
+        platformAvailable: isPlatformAvailable,
       });
 
+      // If already registered, warn but allow re-enrollment (for new devices)
+      if (alreadyRegistered) {
+        console.warn('[WebAuthn] User already has credentials — re-enrolling for this device');
+      }
+
       // 2. Trigger platform authenticator (fingerprint/face scan)
-      const attestationResponse = await startRegistration({ optionsJSON: options });
+      const attestationResponse = await startRegistration({ optionsJSON: webAuthnOptions });
 
       // 3. Send attestation to server for verification + storage
-      const result = await completeRegistration(options.user.id, attestationResponse);
+      const result = await completeRegistration(webAuthnOptions.user.id, attestationResponse);
 
       setState(prev => ({
         ...prev,
@@ -104,11 +114,22 @@ export function useWebAuthn(): UseWebAuthnReturn {
       return true;
     } catch (err: any) {
       const detail = err.name ? `[${err.name}] ` : '';
+      console.error('[WebAuthn] Registration failed:', err.name, err.message, err);
+
       let message = err.message || 'Registration failed. Please try again.';
-      // If already registered, guide user to login instead
-      if (err.message?.includes('already registered') || err.message?.includes('previously registered')) {
-        message = 'This user already has a biometric credential. Please use Fingerprint Login instead.';
+      // Provide actionable guidance based on error type
+      if (err.name === 'NotAllowedError') {
+        message = 'Biometric prompt was dismissed or not available. Make sure your device has fingerprint/face enrolled in Android Settings → Security.';
+      } else if (err.name === 'InvalidStateError' || err.message?.includes('previously registered')) {
+        message = 'This user already has a biometric credential on this device. Use Sign In instead.';
+      } else if (err.name === 'SecurityError') {
+        message = 'Security error — check that you are on HTTPS and the domain matches.';
+      } else if (err.name === 'AbortError') {
+        message = 'Enrollment cancelled. Try again when ready.';
+      } else if (err.name === 'NotSupportedError') {
+        message = 'WebAuthn not supported on this browser. Use Chrome or Edge.';
       }
+
       setState(prev => ({
         ...prev,
         isLoading: false,
