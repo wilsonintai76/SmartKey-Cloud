@@ -83,6 +83,21 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, isAdminMode, onL
               <i className="fa-solid fa-chevron-right text-[8px] text-slate-400 group-hover:translate-x-1 transition-transform"></i>
             </button>
 
+            {/* Enroll Biometric */}
+            <button 
+              onClick={() => {
+                setShowProfileMenu(false);
+                onOpenSettings('account');
+              }}
+              className="w-full px-4 py-4 rounded-3xl bg-purple-50 text-purple-700 text-[11px] font-black flex items-center justify-between group transition-all hover:bg-purple-100 border border-purple-100/50"
+            >
+              <div className="flex items-center gap-4">
+                <i className="fa-solid fa-fingerprint text-purple-500"></i>
+                Enroll Biometric
+              </div>
+              <i className="fa-solid fa-chevron-right text-[8px] text-purple-400 group-hover:translate-x-1 transition-transform"></i>
+            </button>
+
             <div className="h-px bg-slate-100 my-2 mx-2"></div>
 
             {/* Terminate Session Style from Screenshot */}

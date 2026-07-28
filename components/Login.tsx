@@ -13,6 +13,7 @@ interface LoginProps {
   systemID: string;
   isConnecting?: boolean; 
   bluetoothStatus?: string;
+  biometricEnabled?: boolean; // from SystemConfig
 }
 
 export const Login: React.FC<LoginProps> = ({ 
@@ -25,7 +26,8 @@ export const Login: React.FC<LoginProps> = ({
   isAuthenticating, 
   systemID,
   isConnecting = false,
-  bluetoothStatus = 'disconnected'
+  bluetoothStatus = 'disconnected',
+  biometricEnabled = false,
 }) => {
   const [mode, setMode] = useState<'offline_menu' | 'offline_pin' | 'setup' | 'biometric_register'>(isFirstTime ? 'setup' : 'offline_menu');
   const [userId, setUserId] = useState('');
@@ -257,7 +259,7 @@ export const Login: React.FC<LoginProps> = ({
                  )}
 
                  {/* ── Biometric Authentication (WebAuthn) ────────────── */}
-                 {isPlatformAvailable !== null && (
+                 {biometricEnabled && isPlatformAvailable !== null && (
                    <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-2xl border border-purple-100 text-left">
                      <p className="text-[10px] font-black uppercase text-purple-700 mb-3">
                        <i className="fa-solid fa-fingerprint mr-1"></i>

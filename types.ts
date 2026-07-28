@@ -52,6 +52,7 @@ export interface SystemConfig {
   sessionTimeout: number;
   offlineStorage: 'browser' | 'board';
   adminEmail?: string;
+  biometricEnabled: boolean; // toggle fingerprint/FaceID WebAuthn
 }
 
 export type BluetoothStatus = 'disconnected' | 'scanning' | 'connecting' | 'connected' | 'error';

@@ -373,7 +373,8 @@ export const App: React.FC = () => {
       <Login onLogin={() => {}} onLocalLogin={handleLocalLogin} onWebAuthnLogin={handleWebAuthnLogin}
         onWebAuthnRegister={handleWebAuthnRegister}
         onFirstTimeSetup={handleFirstTimeSetup} isFirstTime={registeredUsers.length === 0}
-        isAuthenticating={uiState.isAuthenticating} systemID={config.systemID} bluetoothStatus={bluetoothStatus} />
+        isAuthenticating={uiState.isAuthenticating} systemID={config.systemID} bluetoothStatus={bluetoothStatus}
+        biometricEnabled={config.biometricEnabled} />
     </>);
   }
 

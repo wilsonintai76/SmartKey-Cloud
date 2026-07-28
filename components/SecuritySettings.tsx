@@ -21,6 +21,17 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ user, config
     });
   };
 
+  const toggleBiometric = () => {
+    setConfig(prev => ({ ...prev, biometricEnabled: !prev.biometricEnabled }));
+    onShowToast({
+      title: config.biometricEnabled ? 'Biometric Disabled' : 'Biometric Enabled',
+      message: config.biometricEnabled
+        ? 'Fingerprint/FaceID sign-in turned off.'
+        : 'Users can now sign in with fingerprint or Face ID.',
+      type: config.biometricEnabled ? 'warning' : 'success'
+    });
+  };
+
   const updateTimeout = (minutes: number) => {
     setConfig(prev => ({ ...prev, sessionTimeout: minutes }));
   };
@@ -87,17 +98,22 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ user, config
             </div>
           </div>
 
-          <div className="flex justify-between items-center p-6 bg-slate-50 rounded-[32px] border border-slate-100 opacity-60">
+          <div className="flex justify-between items-center p-6 bg-slate-50 rounded-[32px] border border-slate-100">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${config.biometricEnabled ? 'bg-purple-500 text-white shadow-purple-100' : 'bg-slate-200 text-slate-400'}`}>
                 <i className="fa-solid fa-fingerprint"></i>
               </div>
               <div>
-                <p className="text-xs font-black text-slate-900 uppercase mb-0.5">Biometric Terminal Unlock</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Requires hardware module</p>
+                <p className="text-xs font-black text-slate-900 uppercase mb-0.5">Biometric Sign-In</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Fingerprint / Face ID via WebAuthn</p>
               </div>
             </div>
-            <span className="text-[8px] font-black uppercase text-slate-400 px-2 py-1 bg-slate-200 rounded-lg">Coming Soon</span>
+            <button 
+              onClick={toggleBiometric}
+              className={`w-14 h-7 rounded-full relative transition-all duration-300 ${config.biometricEnabled ? 'bg-purple-500' : 'bg-slate-300'}`}
+            >
+              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${config.biometricEnabled ? 'left-8' : 'left-1'}`}></div>
+            </button>
           </div>
         </div>
 

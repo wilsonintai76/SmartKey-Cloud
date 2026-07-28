@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useWebAuthn } from '../hooks/useWebAuthn';
 
 interface AccountSettingsProps {
   user: any;
@@ -14,6 +15,10 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ user, setUser,
   const [macAddress, setMacAddress] = useState(user.macAddress || '');
   const [userId, setUserId] = useState(user.userId || '');
   const [offlinePin, setOfflinePin] = useState(user.offlinePin || '');
+  const [biometricStatus, setBiometricStatus] = useState('');
+  const [biometricUsername, setBiometricUsername] = useState(user.name || '');
+
+  const { register, isLoading: isBioLoading, error: bioError, isPlatformAvailable } = useWebAuthn();
 
   const handleSave = () => {
     setUser({ ...user, name, phone, macAddress, userId, offlinePin });
@@ -22,6 +27,22 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ user, setUser,
       message: 'Identity and Digital Binding credentials synchronized.',
       type: 'success'
     });
+  };
+
+  const handleEnrollBiometric = async () => {
+    const username = biometricUsername.trim() || name;
+    if (!username) {
+      setBiometricStatus('Please enter a username for biometric enrollment.');
+      return;
+    }
+    setBiometricStatus('Starting biometric enrollment...');
+    const success = await register(username);
+    if (success) {
+      setBiometricStatus('Biometric enrolled successfully!');
+      onShowToast({ title: 'Biometric Enrolled', message: `Fingerprint/Face ID registered for "${username}".`, type: 'success' });
+    } else {
+      setBiometricStatus(bioError || 'Enrollment failed. Please try again.');
+    }
   };
 
   return (
@@ -140,6 +161,53 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ user, setUser,
            <p className="text-[9px] text-slate-400 mt-2 ml-1">
              Used for manual login at the physical terminal if the internet is down and MAC address binding fails.
            </p>
+        </div>
+
+        {/* Biometric Enrollment Section */}
+        <div className="pt-6 border-t border-slate-100">
+           <h4 className="text-[10px] font-black uppercase text-purple-500 tracking-widest mb-4">
+             <i className="fa-solid fa-fingerprint mr-1"></i>
+             Biometric Enrollment (WebAuthn)
+           </h4>
+           {isPlatformAvailable === false ? (
+             <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
+               <p className="text-[10px] font-bold text-amber-700">
+                 No platform authenticator detected. Fingerprint/Face ID requires a device with biometric hardware.
+               </p>
+             </div>
+           ) : (
+             <div className="bg-purple-50 p-5 rounded-2xl border border-purple-100 space-y-3">
+               <p className="text-[10px] text-purple-700 font-medium">
+                 Enroll your fingerprint or face for passwordless sign-in. This is optional — you can still use your offline PIN.
+               </p>
+               <input
+                 type="text"
+                 value={biometricUsername}
+                 onChange={e => setBiometricUsername(e.target.value)}
+                 placeholder="Username for biometric login"
+                 className="w-full bg-white border border-purple-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-purple-400"
+                 disabled={isBioLoading}
+               />
+               <button
+                 onClick={handleEnrollBiometric}
+                 disabled={isBioLoading}
+                 className="w-full py-3 px-4 rounded-xl font-black uppercase text-[10px] tracking-wider bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
+               >
+                 {isBioLoading ? (
+                   <><i className="fa-solid fa-spinner animate-spin mr-2"></i>Scanning...</>
+                 ) : (
+                   <><i className="fa-solid fa-fingerprint mr-2"></i>Enroll Biometric</>
+                 )}
+               </button>
+               {biometricStatus && (
+                 <p className={`text-[9px] font-bold text-center uppercase ${
+                   biometricStatus.includes('success') ? 'text-emerald-600' : 'text-rose-500'
+                 }`}>
+                   {biometricStatus}
+                 </p>
+               )}
+             </div>
+           )}
         </div>
 
         <div className="p-6 bg-blue-50 rounded-[32px] border border-blue-100 flex items-center gap-4">

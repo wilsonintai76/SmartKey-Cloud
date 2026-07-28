@@ -21,4 +21,5 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   sessionTimeout: 30,
   offlineStorage: 'browser',
   adminEmail: 'wilsonintai76@gmail.com',
+  biometricEnabled: false, // admin must opt-in via Security Settings
 };
