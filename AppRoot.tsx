@@ -7,6 +7,7 @@ import { INITIAL_SLOTS, DEFAULT_SYSTEM_CONFIG } from './constants';
 import { bluetoothService } from './services/bluetoothService';
 import { keyCabinetDB } from './services/keyCabinetDB';
 import { syncLogs } from './services/syncService';
+import { getSessionToken, clearSessionToken, recordAuditEvent, verifySession, logoutSession } from './services/webauthnService';
 
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
@@ -31,6 +32,7 @@ interface Toast {
 export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<UserProfileData | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(getSessionToken());
   const [registeredUsers, setRegisteredUsers] = useState<UserProfileData[]>([]);
   const [config, setConfig] = useState<SystemConfig>(DEFAULT_SYSTEM_CONFIG);
 
@@ -75,7 +77,7 @@ export const App: React.FC = () => {
   const [isPostEmergency, setIsPostEmergency] = useState(false);
   const [recentlyMaintained, setRecentlyMaintained] = useState<number | null>(null);
 
-  // ── Init: Load local data ───────────────────────────────────────
+  // ── Init: Load local data + try session recovery ────────────────
   useEffect(() => {
     const stored = localStorage.getItem('smartkey_config');
     if (stored) { try { setConfig(JSON.parse(stored)); setTempConfig(JSON.parse(stored)); } catch {} }
@@ -83,6 +85,28 @@ export const App: React.FC = () => {
     if (storedUsers) { try { setRegisteredUsers(JSON.parse(storedUsers)); } catch {} }
     const storedSlots = localStorage.getItem('smartkey_slots');
     if (storedSlots) { try { setSlots(JSON.parse(storedSlots)); } catch {} }
+
+    // Try to recover a previous WebAuthn session
+    const token = getSessionToken();
+    if (token) {
+      setSessionToken(token);
+      // Attempt token verification
+      verifySession().then(result => {
+          if (result && result.user) {
+            const recoveredUser: UserProfileData = {
+              id: result.user.id,
+              name: result.user.displayName || result.user.username,
+              email: '',
+              avatar: '',
+              status: 'active',
+              role: 'staff',
+            };
+            setUser(recoveredUser);
+            showToast({ title: 'Session Restored', message: `Welcome back, ${recoveredUser.name}`, type: 'info' });
+          }
+        }).catch(() => {});
+    }
+
     setIsLoading(false);
   }, []);
 
@@ -114,13 +138,23 @@ export const App: React.FC = () => {
     return () => unsub();
   }, []);
 
-  // ── BLE Key Presence → IndexedDB + Slot State ──────────────────
+  // ── BLE Key Presence → IndexedDB + Slot State + Cloud Audit ────
   useEffect(() => {
     const unsub = bluetoothService.onKeyPresence(keyPresent => {
       const action = keyPresent ? 'RETURNED' : 'TAKEN';
       keyCabinetDB.addLog({ userId: user?.id || 'unknown', userName: user?.name || 'Unknown', action, slotLabel: 'Cabinet', timestamp: Date.now() })
         .then(() => { if (navigator.onLine) syncLogs().catch(() => {}); })
         .catch(err => console.warn('IndexedDB write failed:', err));
+
+      // ── Cloud audit log (if session token is active) ────────────
+      if (sessionToken && navigator.onLine && user?.id) {
+        recordAuditEvent(
+          keyPresent ? 'cabinet_close' : 'cabinet_open',
+          'Cabinet',
+          keyPresent ? 'BORROWED' : 'AVAILABLE',
+          keyPresent ? 'AVAILABLE' : 'BORROWED'
+        ).catch(() => {});
+      }
 
       // ── Update slot state from hardware microswitch ─────────────
       setSlots(prev => {
@@ -215,7 +249,8 @@ export const App: React.FC = () => {
     return false;
   };
 
-  const handleWebAuthnLogin = (userId: string, userName: string) => {
+  const handleWebAuthnLogin = (userId: string, userName: string, token?: string) => {
+    if (token) setSessionToken(token);
     const found = registeredUsers.find(u => u.id === userId);
     const u = found || { id: userId, name: userName, email: '', avatar: '', status: 'active' as const, role: 'staff' as const };
     setUser(u);
@@ -224,7 +259,34 @@ export const App: React.FC = () => {
     if (!isBluetoothConnected) bluetoothService.connect().catch(e => showGlobalError(e.message));
   };
 
-  const handleLogout = () => { setUser(null); setView('dashboard'); };
+  const handleWebAuthnRegister = (userId: string, userName: string) => {
+    // After biometric enrollment, create a local user record for the PWA
+    const newUser: UserProfileData = {
+      id: userId,
+      name: userName,
+      email: '',
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=7c3aed&color=fff&size=128`,
+      status: 'active',
+      role: 'staff',
+    };
+    setRegisteredUsers(prev => {
+      if (prev.find(u => u.id === userId)) return prev;
+      return [...prev, newUser];
+    });
+    addLog(userName, 'Biometric Enrollment', 'System', 'success', userId);
+    showToast({ title: 'Biometric Enrolled', message: `${userName} can now sign in with fingerprint/face.`, type: 'success' });
+  };
+
+  const handleLogout = () => {
+    // Revoke cloud session
+    if (sessionToken && navigator.onLine) {
+      logoutSession().catch(() => {});
+    }
+    clearSessionToken();
+    setSessionToken(null);
+    setUser(null);
+    setView('dashboard');
+  };
 
   const handleFirstTimeSetup = (name: string, email: string, userId: string, pin: string) => {
     const newAdmin: UserProfileData = {
@@ -309,6 +371,7 @@ export const App: React.FC = () => {
     return (<>
       <ToastContainer toast={uiState.toast} globalError={uiState.globalError} onClearToast={clearToast} onClearGlobalError={clearGlobalError} />
       <Login onLogin={() => {}} onLocalLogin={handleLocalLogin} onWebAuthnLogin={handleWebAuthnLogin}
+        onWebAuthnRegister={handleWebAuthnRegister}
         onFirstTimeSetup={handleFirstTimeSetup} isFirstTime={registeredUsers.length === 0}
         isAuthenticating={uiState.isAuthenticating} systemID={config.systemID} bluetoothStatus={bluetoothStatus} />
     </>);

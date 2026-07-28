@@ -1,13 +1,55 @@
 import { generateRegistrationOptions, generateAuthenticationOptions } from '@simplewebauthn/server';
 
-const RP_ID = 'localhost'; // Override per-environment via wrangler.toml vars
-const RP_NAME = 'Key Cabinet System';
-const ORIGIN = 'http://localhost:3000';
+/**
+ * Worker-compatible base64url encode/decode (no Node.js Buffer).
+ * In Workers, @simplewebauthn/server v10+ handles Uint8Array natively,
+ * but credential IDs and public keys stored in D1 need BLOB ↔ base64url conversion.
+ */
 
-export function getRegistrationOptions(user: { id: string; username: string; displayName: string }) {
+export function base64urlToBytes(b64: string): Uint8Array {
+  // Normalize base64url → base64
+  const base64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const raw = atob(base64 + padding);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) {
+    bytes[i] = raw.charCodeAt(i);
+  }
+  return bytes;
+}
+
+export function bytesToBase64url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// ── Environment-aware config ──────────────────────────────────────
+
+export interface WebAuthnEnv {
+  rpId: string;
+  rpName: string;
+  origin: string;
+}
+
+export function getWebAuthnEnv(c: any): WebAuthnEnv {
+  return {
+    rpId: c.env.RP_ID || 'localhost',
+    rpName: c.env.RP_NAME || 'Key Cabinet',
+    origin: c.env.ORIGIN || 'http://localhost:3000',
+  };
+}
+
+export function getRegistrationOptions(
+  env: WebAuthnEnv,
+  user: { id: string; username: string; displayName: string }
+) {
   return generateRegistrationOptions({
-    rpName: RP_NAME,
-    rpID: RP_ID,
+    rpName: env.rpName,
+    rpID: env.rpId,
     userID: user.id,
     userName: user.username,
     userDisplayName: user.displayName,
@@ -16,13 +58,16 @@ export function getRegistrationOptions(user: { id: string; username: string; dis
       residentKey: 'preferred',
       userVerification: 'required',
     },
-    supportedAlgorithmIDs: [-7, -257],
+    supportedAlgorithmIDs: [-7, -257], // ES256 + RS256
   });
 }
 
-export function getAuthOptions(allowCredentials: { id: string; transports?: AuthenticatorTransport[] }[]) {
+export function getAuthOptions(
+  env: WebAuthnEnv,
+  allowCredentials: { id: string; transports?: AuthenticatorTransport[] }[]
+) {
   return generateAuthenticationOptions({
-    rpID: RP_ID,
+    rpID: env.rpId,
     allowCredentials: allowCredentials as any,
     userVerification: 'required',
   });

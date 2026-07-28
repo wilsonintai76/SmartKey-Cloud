@@ -1,14 +1,40 @@
 ﻿/**
  * WebAuthn API client — talks to the Cloudflare Hono backend.
  * Uses @simplewebauthn/browser on the frontend for credential creation/assertion.
+ *
+ * Session tokens are stored in sessionStorage (cleared on tab close)
+ * and used to authenticate audit log writes and BLE door commands.
  */
 
 const API_BASE = import.meta.env.VITE_WEBAUTHN_API || '/api/webauthn';
+const AUDIT_API = import.meta.env.VITE_AUDIT_API || '/api/audit';
 
 export interface WebAuthnUser {
   id: string;
   username: string;
   displayName?: string;
+}
+
+export interface AuthResult {
+  success: boolean;
+  token: string;
+  user: WebAuthnUser;
+}
+
+// ── Token storage ─────────────────────────────────────────────────
+
+const TOKEN_KEY = 'smartkey_session_token';
+
+export function getSessionToken(): string | null {
+  return sessionStorage.getItem(TOKEN_KEY);
+}
+
+export function setSessionToken(token: string): void {
+  sessionStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearSessionToken(): void {
+  sessionStorage.removeItem(TOKEN_KEY);
 }
 
 // ── Registration ──────────────────────────────────────────────────
@@ -54,7 +80,10 @@ export async function beginAuthentication(username: string) {
   return res.json();
 }
 
-export async function completeAuthentication(assertionResponse: any, challenge: string) {
+export async function completeAuthentication(
+  assertionResponse: any,
+  challenge: string
+): Promise<AuthResult> {
   const res = await fetch(`${API_BASE}/auth/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -62,7 +91,78 @@ export async function completeAuthentication(assertionResponse: any, challenge: 
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).error || 'Authentication failed');
+    throw new Error((err as any).error || 'Biometric verification failed');
   }
-  return res.json();
+  const data = await res.json();
+  if (data.token) {
+    setSessionToken(data.token);
+  }
+  return data;
+}
+
+/**
+ * Verify an existing session token (e.g., on app reload).
+ */
+export async function verifySession(): Promise<AuthResult | null> {
+  const token = getSessionToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) {
+      clearSessionToken();
+      return null;
+    }
+    return await res.json();
+  } catch {
+    clearSessionToken();
+    return null;
+  }
+}
+
+/**
+ * Revoke the current session token (logout).
+ */
+export async function logoutSession(): Promise<void> {
+  const token = getSessionToken();
+  if (token) {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+    } catch {}
+  }
+  clearSessionToken();
+}
+
+// ── Audit logging (authenticated) ─────────────────────────────────
+
+export async function recordAuditEvent(
+  action: string,
+  slotLabel?: string,
+  pegStateBefore?: string,
+  pegStateAfter?: string
+): Promise<boolean> {
+  const token = getSessionToken();
+  if (!token) return false;
+
+  try {
+    const res = await fetch(`${AUDIT_API}/event`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action, slotLabel, pegStateBefore, pegStateAfter }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
