@@ -97,10 +97,11 @@ export function useWebAuthn(): UseWebAuthnReturn {
       }));
       return true;
     } catch (err: any) {
+      const detail = err.name ? `[${err.name}] ` : '';
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: err.message || 'Registration failed. Please try again.',
+        error: `${detail}${err.message || 'Registration failed. Please try again.'}`,
       }));
       return false;
     }
@@ -128,10 +129,11 @@ export function useWebAuthn(): UseWebAuthnReturn {
       }));
       return true;
     } catch (err: any) {
+      const detail = err.name ? `[${err.name}] ` : '';
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: err.message || 'Authentication failed.',
+        error: `${detail}${err.message || 'Authentication failed.'}`,
       }));
       return false;
     }

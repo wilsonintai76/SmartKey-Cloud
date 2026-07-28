@@ -31,7 +31,7 @@ port = 8787
 
 # ── Production overrides ───────────────────────────────────────────
 [env.production]
-vars = { RP_ID = "smartkey-7ak.pages.dev", RP_NAME = "Key Cabinet", ORIGIN = "https://smartkey-7ak.pages.dev" }
+vars = { RP_ID = "smartkey-7ak.pages.dev", RP_NAME = "Key Cabinet" }
 
 [[env.production.d1_databases]]
 binding = "DB"

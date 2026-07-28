@@ -36,10 +36,27 @@ export interface WebAuthnEnv {
 }
 
 export function getWebAuthnEnv(c: any): WebAuthnEnv {
+  const origin = c.req.header('Origin') || c.env.ORIGIN || 'http://localhost:3000';
+  // Derive rpId from the origin if no explicit RP_ID set (or it's still "localhost")
+  const rpId = (c.env.RP_ID && c.env.RP_ID !== 'localhost')
+    ? c.env.RP_ID
+    : (() => {
+        try {
+          const url = new URL(origin);
+          // For *.pages.dev, use the parent domain so all deploy hashes share the same RP
+          if (url.hostname.endsWith('.pages.dev')) {
+            const parts = url.hostname.split('.');
+            // e.g. 026aad8f.smartkey-7ak.pages.dev → smartkey-7ak.pages.dev
+            if (parts.length >= 4) return parts.slice(-3).join('.');
+            return url.hostname;
+          }
+          return url.hostname;
+        } catch { return 'localhost'; }
+      })();
   return {
-    rpId: c.env.RP_ID || 'localhost',
+    rpId,
     rpName: c.env.RP_NAME || 'Key Cabinet',
-    origin: c.env.ORIGIN || 'http://localhost:3000',
+    origin,
   };
 }
 
