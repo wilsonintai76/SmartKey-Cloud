@@ -81,7 +81,7 @@ export function useWebAuthn(): UseWebAuthnReturn {
       const options = await beginRegistration(username);
 
       // 2. Trigger platform authenticator (fingerprint/face scan)
-      const attestationResponse = await startRegistration(options);
+      const attestationResponse = await startRegistration({ optionsJSON: options });
 
       // 3. Send attestation to server for verification + storage
       await completeRegistration(options.user.id, attestationResponse);
@@ -115,7 +115,7 @@ export function useWebAuthn(): UseWebAuthnReturn {
       const options = await beginAuthentication(username);
 
       // 2. Trigger platform authenticator
-      const assertionResponse = await startAuthentication(options);
+      const assertionResponse = await startAuthentication({ optionsJSON: options });
 
       // 3. Verify + get JWT session token
       const result: AuthResult = await completeAuthentication(assertionResponse, options.challenge);
