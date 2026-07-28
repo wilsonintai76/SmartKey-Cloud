@@ -90,13 +90,13 @@ export function useWebAuthn(): UseWebAuthnReturn {
       const attestationResponse = await startRegistration({ optionsJSON: options });
 
       // 3. Send attestation to server for verification + storage
-      await completeRegistration(options.user.id, attestationResponse);
+      const result = await completeRegistration(options.user.id, attestationResponse);
 
       setState(prev => ({
         ...prev,
         isLoading: false,
         user: {
-          id: options.user.id,
+          id: result.userId || options.user.id,
           username,
           displayName: options.user.displayName,
         },
@@ -104,10 +104,15 @@ export function useWebAuthn(): UseWebAuthnReturn {
       return true;
     } catch (err: any) {
       const detail = err.name ? `[${err.name}] ` : '';
+      let message = err.message || 'Registration failed. Please try again.';
+      // If already registered, guide user to login instead
+      if (err.message?.includes('already registered') || err.message?.includes('previously registered')) {
+        message = 'This user already has a biometric credential. Please use Fingerprint Login instead.';
+      }
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: `${detail}${err.message || 'Registration failed. Please try again.'}`,
+        error: `${detail}${message}`,
       }));
       return false;
     }

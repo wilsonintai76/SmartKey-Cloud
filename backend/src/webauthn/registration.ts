@@ -1,9 +1,17 @@
 import { Hono } from 'hono';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
-import { getRegistrationOptions, getWebAuthnEnv, bytesToBase64url } from './utils';
+import { getRegistrationOptions, getWebAuthnEnv, bytesToBase64url, base64urlToBytes } from './utils';
 
 type Bindings = { DB: D1Database; KV: KVNamespace; RP_ID: string; RP_NAME: string; ORIGIN: string };
 const app = new Hono<{ Bindings: Bindings }>();
+
+/**
+ * Decode a base64url-encoded user ID (from options.user.id) back to the raw UUID string.
+ * The server encodes userID as Uint8Array and generateRegistrationOptions returns it as base64url.
+ */
+function decodeUserId(b64UserId: string): string {
+  return new TextDecoder().decode(base64urlToBytes(b64UserId));
+}
 
 /**
  * POST /api/webauthn/register/begin
@@ -26,14 +34,24 @@ app.post('/register/begin', async (c) => {
     user = { id: userId, username, display_name: username };
   }
 
+  // Check if user already has credentials — they should authenticate, not re-register
+  const existingCreds = await db.prepare(
+    'SELECT credential_id FROM credentials WHERE user_id = ?'
+  ).bind(user.id as string).first();
+
   const options = await getRegistrationOptions(env, {
     id: user.id as string,
     username: user.username as string,
     displayName: (user as any).display_name as string,
   });
 
-  await c.env.KV.put(`challenge:${(user as any).id}`, options.challenge, { expirationTtl: 300 });
-  return c.json(options);
+  // Store challenge keyed by base64url userId (what the browser sends back)
+  // NOT the raw UUID — generateRegistrationOptions returns user.id as base64url
+  await c.env.KV.put(`challenge:${options.user.id}`, options.challenge, { expirationTtl: 300 });
+  return c.json({
+    ...options,
+    alreadyRegistered: !!existingCreds,
+  });
 });
 
 /**
@@ -47,8 +65,12 @@ app.post('/register/complete', async (c) => {
   const kv = c.env.KV;
   const env = getWebAuthnEnv(c);
 
+  // userId from browser is base64url-encoded (from options.user.id)
   const challenge = await kv.get(`challenge:${userId}`);
   if (!challenge) return c.json({ error: 'Challenge expired. Please restart registration.' }, 400);
+
+  // Decode base64url userId → raw UUID for D1 lookups
+  const rawUserId = decodeUserId(userId);
 
   let verification: Awaited<ReturnType<typeof verifyRegistrationResponse>>;
   try {
@@ -79,7 +101,7 @@ app.post('/register/complete', async (c) => {
     .bind(credId).first();
   if (existing) {
     await kv.delete(`challenge:${userId}`);
-    return c.json({ success: true, userId, credentialId: credId });
+    return c.json({ success: true, userId: rawUserId, credentialId: credId });
   }
 
   await db.prepare(
@@ -87,7 +109,7 @@ app.post('/register/complete', async (c) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     credId,
-    userId,
+    rawUserId,
     pubKeyBytes,
     0,
     deviceType,
@@ -100,10 +122,10 @@ app.post('/register/complete', async (c) => {
   // Audit log
   await db.prepare(
     'INSERT INTO audit_logs (user_id, action, device_info, created_at) VALUES (?, ?, ?, ?)'
-  ).bind(userId, 'register', `device_type=${deviceType}`, Date.now()).run();
+  ).bind(rawUserId, 'register', `device_type=${deviceType}`, Date.now()).run();
 
   await kv.delete(`challenge:${userId}`);
-  return c.json({ success: true, userId, credentialId: credId });
+  return c.json({ success: true, userId: rawUserId, credentialId: credId });
 });
 
 export default app;
