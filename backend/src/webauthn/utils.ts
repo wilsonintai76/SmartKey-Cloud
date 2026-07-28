@@ -62,7 +62,8 @@ export function getWebAuthnEnv(c: any): WebAuthnEnv {
 
 export function getRegistrationOptions(
   env: WebAuthnEnv,
-  user: { id: string; username: string; displayName: string }
+  user: { id: string; username: string; displayName: string },
+  excludeCredentials: { id: string; transports?: AuthenticatorTransport[] }[] = [],
 ) {
   // @simplewebauthn/server v10+ requires userID as Uint8Array
   const encoder = new TextEncoder();
@@ -72,6 +73,8 @@ export function getRegistrationOptions(
     userID: encoder.encode(user.id),
     userName: user.username,
     userDisplayName: user.displayName,
+    attestationType: 'none',
+    excludeCredentials: excludeCredentials as any,
     authenticatorSelection: {
       // No authenticatorAttachment = allow both biometric + USB keys
       residentKey: 'preferred',

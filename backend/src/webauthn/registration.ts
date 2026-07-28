@@ -34,23 +34,29 @@ app.post('/register/begin', async (c) => {
     user = { id: userId, username, display_name: username };
   }
 
-  // Check if user already has credentials — they should authenticate, not re-register
+  // Query existing credentials for excludeCredentials (prevents duplicate registration)
   const existingCreds = await db.prepare(
-    'SELECT credential_id FROM credentials WHERE user_id = ?'
-  ).bind(user.id as string).first();
+    'SELECT credential_id, transports FROM credentials WHERE user_id = ?'
+  ).bind(user.id as string).all();
+
+  const excludeCredentials = existingCreds.results.map((c: any) => {
+    let transports: AuthenticatorTransport[] = [];
+    try { transports = JSON.parse(c.transports as string); } catch {}
+    return { id: c.credential_id as string, transports };
+  });
 
   const options = await getRegistrationOptions(env, {
     id: user.id as string,
     username: user.username as string,
     displayName: (user as any).display_name as string,
-  });
+  }, excludeCredentials);
 
   // Store challenge keyed by base64url userId (what the browser sends back)
   // NOT the raw UUID — generateRegistrationOptions returns user.id as base64url
   await c.env.KV.put(`challenge:${options.user.id}`, options.challenge, { expirationTtl: 300 });
   return c.json({
     ...options,
-    alreadyRegistered: !!existingCreds,
+    alreadyRegistered: existingCreds.results.length > 0,
   });
 });
 
