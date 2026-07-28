@@ -29,6 +29,16 @@ app.use('/*', cors({
   maxAge: 86400,
 }));
 
+// ── Global error handler ──────────────────────────────────────────
+
+app.onError((err, c) => {
+  console.error('Worker error:', err.message, err.stack);
+  return c.json({
+    error: 'Internal server error',
+    message: err.message,
+  }, 500);
+});
+
 // ── Auth middleware (inject userId/username from Bearer token) ────
 
 app.use('/api/audit/*', async (c, next) => {
