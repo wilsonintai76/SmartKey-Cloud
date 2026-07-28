@@ -33,19 +33,16 @@ export const Header: React.FC<HeaderProps> = ({
   const isBluetoothConnected = bluetoothStatus === 'connected';
 
   return (
-    <header className="px-4 md:px-6 py-2 md:py-4 bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200/50">
+    <header className="px-3 md:px-6 py-2 md:py-4 bg-white/95 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200/50">
         <div className="max-w-[1920px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4 md:gap-12">
+          <div className="flex items-center gap-3 md:gap-12">
             <div className="flex items-center gap-2 md:gap-3">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-600 rounded-lg md:rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                <i className="fa-solid fa-microchip text-sm md:text-lg"></i>
-              </div>
+              <img src="/logo.png" className="w-7 h-7 md:w-10 md:h-10 rounded-lg" alt="SecureKey" />
               <div>
                 <h1 className="text-sm md:text-lg font-black tracking-tight leading-none text-slate-900">
                   SecureKey
                 </h1>
-                <div className="flex items-center gap-1.5 mt-1">
-                  {/* BLE Connection Indicator */}
+                <div className="flex items-center gap-1.5 mt-0.5">
                   <div className={`flex items-center gap-1.5 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md border transition-all flex-shrink-0 ${
                     bluetoothStatus === 'connected' ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm'
                     : bluetoothStatus === 'scanning' || bluetoothStatus === 'connecting' ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'
@@ -55,10 +52,10 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className="text-[7px] md:text-[8px] font-black uppercase tracking-wider">
                       BLE {bluetoothStatus === 'connected' ? 'Active' : bluetoothStatus}
                     </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
             {/* Desktop View Switcher */}
             {!showSettings ? (
@@ -88,12 +85,8 @@ export const Header: React.FC<HeaderProps> = ({
               </nav>
             ) : (
               <div className="hidden md:flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase text-slate-300">
-                  Currently Editing:
-                </span>
-                <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">
-                  User Preferences
-                </span>
+                <span className="text-[10px] font-black uppercase text-slate-300">Currently Editing:</span>
+                <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">User Preferences</span>
               </div>
             )}
           </div>

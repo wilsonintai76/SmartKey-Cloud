@@ -445,7 +445,7 @@ export const App: React.FC = () => {
 
   const isAdmin = user.role === 'admin';
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100 flex flex-col relative overflow-hidden pb-20 md:pb-0">
       <ToastContainer toast={uiState.toast} globalError={uiState.globalError} onClearToast={clearToast} onClearGlobalError={clearGlobalError} />
       <Header networkMode="local" mqttStatus="disconnected" bluetoothStatus={bluetoothStatus} showSettings={uiState.showSettings}
         view={uiState.view} isAdmin={isAdmin} user={user} onViewChange={setView}
