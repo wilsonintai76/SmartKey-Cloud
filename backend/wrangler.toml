@@ -5,16 +5,16 @@
 name = "smartkey"
 main = "src/index.ts"
 compatibility_date = "2025-07-21"
-account_id = "31318c7c7baa536e7653d8037816cda0"
+account_id = "b6f9b4c33511b3e607595a0993dfdcd4"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "key-cabinet-db"
-database_id = "68c5688d-f077-4d90-abe8-bb8720a2bdae"
+database_name = "smartkey-db"
+database_id = "f5ad0733-ce5b-49c5-aed6-5afae9dd8d0c"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "7782c294799449868bfa8f96abf47f73"
+id = "999ef8b6bb814df0ba18e2860312e9c8"
 
 [vars]
 RP_ID = "localhost"
@@ -31,13 +31,13 @@ port = 8787
 
 # ── Production overrides ───────────────────────────────────────────
 [env.production]
-vars = { RP_ID = "smartkey.pages.dev", RP_NAME = "Key Cabinet", ORIGIN = "https://smartkey.pages.dev" }
+vars = { RP_ID = "smartkey-7ak.pages.dev", RP_NAME = "Key Cabinet", ORIGIN = "https://smartkey-7ak.pages.dev" }
 
 [[env.production.d1_databases]]
 binding = "DB"
-database_name = "key-cabinet-db"
-database_id = "68c5688d-f077-4d90-abe8-bb8720a2bdae"
+database_name = "smartkey-db"
+database_id = "f5ad0733-ce5b-49c5-aed6-5afae9dd8d0c"
 
 [[env.production.kv_namespaces]]
 binding = "KV"
-id = "7782c294799449868bfa8f96abf47f73"
+id = "999ef8b6bb814df0ba18e2860312e9c8"
