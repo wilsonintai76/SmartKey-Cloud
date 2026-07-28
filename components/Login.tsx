@@ -42,6 +42,7 @@ export const Login: React.FC<LoginProps> = ({
   const [fingerprintStatus, setFingerprintStatus] = useState('');
   const [fingerprintUsername, setFingerprintUsername] = useState('');
   const [registerUsername, setRegisterUsername] = useState('');
+  const [showDebug, setShowDebug] = useState(false);
 
   const {
     isPlatformAvailable,
@@ -399,6 +400,26 @@ export const Login: React.FC<LoginProps> = ({
                     </span>
                   )}
                 </div>
+
+                {/* Debug Panel — tap to toggle */}
+                <button
+                  onClick={() => setShowDebug(!showDebug)}
+                  className="w-full text-[9px] font-bold uppercase text-slate-400 hover:text-slate-600 text-center"
+                >
+                  <i className={`fa-solid fa-${showDebug ? 'chevron-up' : 'bug'} mr-1`}></i>
+                  {showDebug ? 'Hide Diagnostics' : 'Show Diagnostics'}
+                </button>
+                {showDebug && (
+                  <div className="bg-slate-900 text-green-400 p-3 rounded-xl text-[9px] font-mono space-y-1 overflow-x-auto">
+                    <div><span className="text-slate-500">isSecureContext:</span> {String(window.isSecureContext)}</div>
+                    <div><span className="text-slate-500">origin:</span> {window.location.origin}</div>
+                    <div><span className="text-slate-500">platformAuth:</span> {isPlatformAvailable === null ? 'checking...' : String(isPlatformAvailable)}</div>
+                    <div><span className="text-slate-500">biometricEnabled:</span> {String(biometricEnabled)}</div>
+                    <div><span className="text-slate-500">fingerprintError:</span> <span className="text-rose-400">{fingerprintError || 'none'}</span></div>
+                    <div><span className="text-slate-500">fingerprintStatus:</span> {fingerprintStatus || 'idle'}</div>
+                    <div><span className="text-slate-500">isLoading:</span> {String(isFingerprintLoading)}</div>
+                  </div>
+                )}
 
                 <div>
                    <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Username</label>
