@@ -54,6 +54,9 @@ export const Login: React.FC<LoginProps> = ({
     sessionToken,
   } = useWebAuthn();
 
+  // Local binding to prevent minification/scope issues
+  const platformAvailable = isPlatformAvailable;
+
   // When WebAuthn hook sets a user, propagate to AppRoot with session token
   useEffect(() => {
     if (webAuthnUser) {
@@ -260,14 +263,14 @@ export const Login: React.FC<LoginProps> = ({
                  )}
 
                  {/* ── Biometric Authentication (WebAuthn) ────────────── */}
-                 {biometricEnabled && isPlatformAvailable !== null && (
+                 {biometricEnabled && platformAvailable !== null && (
                    <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-2xl border border-purple-100 text-left">
                      <p className="text-[10px] font-black uppercase text-purple-700 mb-3">
                        <i className="fa-solid fa-fingerprint mr-1"></i>
                        Biometric Sign-In
                      </p>
 
-                     {isPlatformAvailable ? (
+                     {platformAvailable ? (
                        <>
                          <input
                            type="text"
@@ -387,13 +390,13 @@ export const Login: React.FC<LoginProps> = ({
                 <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 text-purple-800 text-xs font-medium mb-4">
                   <p className="font-black uppercase mb-1">🔐 Biometric Enrollment</p>
                   Your fingerprint or face scan stays on your device. Only a public key is stored on the server.
-                  {isPlatformAvailable && (
+                  {platformAvailable && (
                     <span className="block mt-1 text-emerald-600">
                       <i className="fa-solid fa-circle-check mr-1"></i>
                       Platform authenticator detected (Touch ID / Face ID / Windows Hello)
                     </span>
                   )}
-                  {isPlatformAvailable === false && (
+                  {platformAvailable === false && (
                     <span className="block mt-1 text-amber-600">
                       <i className="fa-solid fa-triangle-exclamation mr-1"></i>
                       No platform biometric detected on this device.
@@ -413,7 +416,7 @@ export const Login: React.FC<LoginProps> = ({
                   <div className="bg-slate-900 text-green-400 p-3 rounded-xl text-[9px] font-mono space-y-1 overflow-x-auto">
                     <div><span className="text-slate-500">isSecureContext:</span> {String(window.isSecureContext)}</div>
                     <div><span className="text-slate-500">origin:</span> {window.location.origin}</div>
-                    <div><span className="text-slate-500">platformAuth:</span> {isPlatformAvailable === null ? 'checking...' : String(isPlatformAvailable)}</div>
+                    <div><span className="text-slate-500">platformAuth:</span> {platformAvailable === null ? 'checking...' : String(platformAvailable)}</div>
                     <div><span className="text-slate-500">biometricEnabled:</span> {String(biometricEnabled)}</div>
                     <div><span className="text-slate-500">fingerprintError:</span> <span className="text-rose-400">{fingerprintError || 'none'}</span></div>
                     <div><span className="text-slate-500">fingerprintStatus:</span> {fingerprintStatus || 'idle'}</div>
