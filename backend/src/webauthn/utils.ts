@@ -47,10 +47,12 @@ export function getRegistrationOptions(
   env: WebAuthnEnv,
   user: { id: string; username: string; displayName: string }
 ) {
+  // @simplewebauthn/server v10+ requires userID as Uint8Array
+  const encoder = new TextEncoder();
   return generateRegistrationOptions({
     rpName: env.rpName,
     rpID: env.rpId,
-    userID: user.id,
+    userID: encoder.encode(user.id),
     userName: user.username,
     userDisplayName: user.displayName,
     authenticatorSelection: {
