@@ -79,6 +79,12 @@ export function useWebAuthn(): UseWebAuthnReturn {
     try {
       // 1. Get registration options from server
       const options = await beginRegistration(username);
+      console.log('[WebAuthn] Registration options from server:', {
+        rpId: options.rp?.id,
+        origin: window.location.origin,
+        isSecureContext: window.isSecureContext,
+        fullOptions: options,
+      });
 
       // 2. Trigger platform authenticator (fingerprint/face scan)
       const attestationResponse = await startRegistration({ optionsJSON: options });
