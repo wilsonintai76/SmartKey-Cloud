@@ -38,7 +38,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     const totalViolations = logs.filter(l => l.action === 'OVERDUE VIOLATION').length;
     const systemLoad = Math.round((slots.filter(s => s.status === KeyStatus.BORROWED).length / slots.length) * 100);
     
-    let report = `SMARTKEY SYSTEM ANALYTICS REPORT\nGenerated: ${timestamp}\nAdministrator: ${user?.name}\n\n--- SYSTEM HEALTH SUMMARY ---\nTotal Resources,${slots.length}\nCurrent System Load,${systemLoad}%\nTotal Recorded Violations,${totalViolations}\n\n--- TOP VIOLATION OFFENDERS ---\nUser Identity,Incident Count\n`;
+    let report = `SECUREKEY ANALYTICS REPORT\nGenerated: ${timestamp}\nAdministrator: ${user?.name}\n\n--- SYSTEM HEALTH SUMMARY ---\nTotal Resources,${slots.length}\nCurrent System Load,${systemLoad}%\nTotal Recorded Violations,${totalViolations}\n\n--- TOP VIOLATION OFFENDERS ---\nUser Identity,Incident Count\n`;
     const violators = getViolationStats();
     if (violators.length === 0) report += `No violations recorded.,\n`;
     violators.forEach(([name, count]) => { report += `${name},${count}\n`; });
@@ -51,7 +51,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `smartkey_analytics_report_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute('download', `securekey_analytics_report_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

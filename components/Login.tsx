@@ -143,7 +143,7 @@ export const Login: React.FC<LoginProps> = ({
             <i className="fa-solid fa-tower-broadcast text-4xl text-blue-600"></i>
           </div>
           
-          <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">SmartKey Full-Stack</h1>
+          <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">SecureKey</h1>
           <p className="text-slate-500 mb-8 text-sm font-bold uppercase tracking-widest opacity-60">Integrated IoT Control Panel</p>
           
           {mode === 'setup' && (
@@ -239,7 +239,7 @@ export const Login: React.FC<LoginProps> = ({
                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center">
                        <i className="fa-solid fa-rss text-slate-300 text-2xl mb-2 animate-pulse"></i>
                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
-                         Scanning for Bluetooth Smartkeys...
+                         Scanning for Bluetooth SecureKey devices...
                        </p>
                        <button 
                          onClick={() => bluetoothService.startScanning()}

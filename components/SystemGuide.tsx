@@ -22,7 +22,7 @@ export const SystemGuide: React.FC<SystemGuideProps> = ({ isOpen, onClose }) => 
               <h2 className="text-3xl font-black text-slate-900 tracking-tight">System Manual</h2>
             </div>
             <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] ml-1">
-              SmartKey Full-Stack v3.0 • ESP32 Dev Vroom
+              SecureKey v3.0 • ESP32 Dev Board
             </p>
           </div>
           <button 

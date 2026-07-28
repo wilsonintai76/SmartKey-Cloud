@@ -42,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <div>
                 <h1 className="text-sm md:text-lg font-black tracking-tight leading-none text-slate-900">
-                  SmartKey
+                  SecureKey
                 </h1>
                 <div className="flex items-center gap-1.5 mt-1">
                   {/* BLE Connection Indicator */}

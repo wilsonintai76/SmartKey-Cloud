@@ -215,7 +215,7 @@ app.get('/assets/:filename', async (c) => {
 
 // Root
 app.get('/', (c) => c.json({
-  name: 'SmartKey API',
+  name: 'SecureKey API',
   version: '3.0',
   endpoints: [
     '/api/webauthn/register/begin',

@@ -1,11 +1,11 @@
 {
-  "name": "SmartKey Cloud IoT",
-  "short_name": "SmartKey",
+  "name": "SecureKey - Key Management System",
+  "short_name": "SecureKey",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "description": "IoT Smart Key Management System Control Panel",
+  "description": "IoT Key Management System with Biometric Authentication",
   "icons": [
     {
       "src": "/icon-512.png",

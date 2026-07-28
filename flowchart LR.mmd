@@ -1,0 +1,35 @@
+flowchart LR
+    subgraph ESP32["ESP32 Dev Board"]
+        G4["GPIO4"]
+        G5["GPIO5"]
+        G2["GPIO2"]
+        V33["3.3V"]
+        GND["GND"]
+    end
+
+    subgraph Relay["Relay Module"]
+        RLY["Solenoid Lock 12V"]
+        D1["Flyback Diode 1N4007"]
+        RLY ---|"parallel"| D1
+    end
+
+    subgraph Input["Input"]
+        SW["Microswitch<br/>(NC - key present)"]
+        R1["Pull-up Resistor<br/>10kΩ"]
+    end
+
+    subgraph Output["Output"]
+        LED["LED"]
+        R2["220Ω"]
+        LED --- R2
+    end
+
+    G4 -->|"Signal"| Relay
+    V33 --> SW --> G5
+    V33 -->|"pull-up"| R1 --> G5
+    G2 --> Output --> GND
+
+    style ESP32 fill:#1a1a2e,color:#00b4d8,stroke:#00b4d8
+    style Relay fill:#2d1b2e,color:#e94560,stroke:#e94560
+    style Input fill:#1b2e1b,color:#06d6a0,stroke:#06d6a0
+    style Output fill:#2e2a1b,color:#ffd166,stroke:#ffd166

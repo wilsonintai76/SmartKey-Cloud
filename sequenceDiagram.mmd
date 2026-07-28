@@ -1,0 +1,25 @@
+sequenceDiagram
+    title Key Take/Return Workflow
+
+    actor User
+    participant PWA as PWA (Browser)
+    participant IDB as IndexedDB
+    participant ESP as ESP32
+    participant Cloud as Cloudflare API
+
+    User->>PWA: Login (User ID + PIN)
+    PWA->>PWA: Verify credentials
+
+    User->>PWA: Tap "Unlock"
+    PWA->>ESP: BLE: unlock command (0x01)
+    ESP->>ESP: Activate relay (1.5s)
+    ESP-->>PWA: BLE notify: door opened
+
+    User->>ESP: Remove/Return key
+    ESP->>ESP: Microswitch detects change
+    ESP-->>PWA: BLE notify: key TAKEN/RETURNED
+
+    PWA->>IDB: Save log (synced=0)
+    PWA->>Cloud: POST sync log
+    Cloud->>Cloud: Store in D1
+    PWA->>IDB: Mark synced=1

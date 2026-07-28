@@ -1,0 +1,41 @@
+flowchart TB
+    subgraph Hardware["🔧 ESP32 Key Cabinet"]
+        ESP["ESP32 Dev Board"]
+        Relay["Solenoid Relay (GPIO4)"]
+        Switch["Microswitch (GPIO5)"]
+        LED["Status LED (GPIO2)"]
+        ESP --> Relay & Switch & LED
+    end
+
+    subgraph PWA["📱 PWA (Cloudflare Pages)"]
+        Login["Login Screen"]
+        Setup["First Time Setup"]
+        Dashboard["Dashboard"]
+        Admin["Admin Hub"]
+        Login -->|"new user?"| Setup
+        Setup -->|"create admin"| Login
+        Login -->|"4-Digit ID + PIN"| Dashboard
+        Login -->|"Fingerprint/Face ID"| Dashboard
+        Dashboard --> Admin
+    end
+
+    subgraph Cloud["☁️ Cloudflare Backend"]
+        Worker["Hono Worker"]
+        D1[("D1 Database")]
+        KV[("KV Namespace")]
+        Worker --> D1 & KV
+    end
+
+    subgraph Storage["💾 Local Storage"]
+        IDB[("IndexedDB (Dexie)")]
+    end
+
+    PWA <-->|"Web Bluetooth"| ESP
+    PWA -->|"WebAuthn API"| Worker
+    PWA -->|"Log Sync"| Worker
+    PWA <-->|"Offline Buffer"| IDB
+
+    style Hardware fill:#1a1a2e,color:#e94560,stroke:#e94560
+    style PWA fill:#0f3460,color:#00b4d8,stroke:#00b4d8
+    style Cloud fill:#16213e,color:#f77f00,stroke:#f77f00
+    style Storage fill:#1a1a2e,color:#06d6a0,stroke:#06d6a0

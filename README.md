@@ -1,8 +1,8 @@
 
-# SmartKey v3 — BLE Key Cabinet System
+# SecureKey v3 — Key Management System
 
 ## System Overview
-The **SmartKey Key Cabinet** is a PWA-controlled IoT key management system. An ESP32 Dev Board with a relay (solenoid lock) and microswitch detects key presence. The React PWA connects directly via Web Bluetooth (BLE), authenticates users with fingerprint/Face ID (WebAuthn), and logs all key events to local IndexedDB with automatic cloud sync to Cloudflare Workers (Hono + D1).
+The **SecureKey** is a PWA-controlled IoT key management system. An ESP32 Dev Board with a relay (solenoid lock) and microswitch detects key presence. The React PWA connects directly via Web Bluetooth (BLE), authenticates users with fingerprint/Face ID (WebAuthn), and logs all key events to local IndexedDB with automatic cloud sync to Cloudflare Workers (Hono + D1).
 
 ---
 
