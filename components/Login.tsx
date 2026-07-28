@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { bluetoothService } from '../services/bluetoothService';
 import { useWebAuthn } from '../hooks/useWebAuthn';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface LoginProps {
   onLogin: () => void;
@@ -159,30 +162,26 @@ export const Login: React.FC<LoginProps> = ({
 
                 <div>
                    <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Full Name</label>
-                   <input type="text" value={setupName} onChange={e => setSetupName(e.target.value)}
-                     placeholder="e.g. Ahmad Zaki"
-                     className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold outline-none focus:border-emerald-400 min-h-[48px]" />
+                   <Input value={setupName} onChange={e => setSetupName(e.target.value)}
+                     placeholder="e.g. Ahmad Zaki" className="min-h-[48px]" />
                 </div>
 
                 <div>
                    <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email (optional)</label>
-                   <input type="email" value={setupEmail} onChange={e => setSetupEmail(e.target.value)}
-                     placeholder="admin@workshop.com"
-                     className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold outline-none focus:border-emerald-400 min-h-[48px]" />
+                   <Input type="email" value={setupEmail} onChange={e => setSetupEmail(e.target.value)}
+                     placeholder="admin@workshop.com" className="min-h-[48px]" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Staff ID (4-Digit)</label>
-                     <input type="text" maxLength={4} value={setupUserId} onChange={e => setSetupUserId(e.target.value.replace(/[^0-9]/g, ''))}
-                       placeholder="0000"
-                       className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400 min-h-[48px]" />
+                     <Input maxLength={4} value={setupUserId} onChange={e => setSetupUserId(e.target.value.replace(/[^0-9]/g, ''))}
+                       placeholder="0000" className="text-center font-mono text-lg min-h-[48px]" />
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 ml-1">PIN (4-6 Digit)</label>
-                     <input type="password" maxLength={6} value={setupPin} onChange={e => setSetupPin(e.target.value.replace(/[^0-9]/g, ''))}
-                       placeholder="••••••"
-                       className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400 min-h-[48px]" />
+                     <Input type="password" maxLength={6} value={setupPin} onChange={e => setSetupPin(e.target.value.replace(/[^0-9]/g, ''))}
+                       placeholder="••••••" className="text-center font-mono text-lg min-h-[48px]" />
                   </div>
                 </div>
 
@@ -192,10 +191,10 @@ export const Login: React.FC<LoginProps> = ({
                   </p>
                 )}
 
-                <button onClick={handleFirstTimeSetupSubmit}
-                  className="w-full py-4 rounded-2xl font-black uppercase text-sm tracking-wider bg-emerald-500 text-white active:bg-emerald-600 shadow-lg shadow-emerald-200 mt-2 min-h-[52px] transition-colors duration-150">
+                <Button onClick={handleFirstTimeSetupSubmit} size="lg"
+                  className="w-full min-h-[52px] bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-wider">
                   Create Admin Account
-                </button>
+                </Button>
              </div>
           )}
 
@@ -361,12 +360,10 @@ export const Login: React.FC<LoginProps> = ({
                   </p>
                 )}
 
-                <button 
-                   onClick={handleManualOfflineAuth}
-                   className="w-full py-4 rounded-2xl font-black uppercase text-sm tracking-wider bg-amber-500 text-white active:bg-amber-600 shadow-lg shadow-amber-200 mt-2 min-h-[52px] transition-colors duration-150"
-                 >
+                <Button onClick={handleManualOfflineAuth} size="lg"
+                   className="w-full min-h-[52px] bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider">
                    Verify & Sign In
-                 </button>
+                 </Button>
 
                  <button 
                    onClick={() => setMode('offline_menu')}
@@ -437,17 +434,18 @@ export const Login: React.FC<LoginProps> = ({
                   </p>
                 )}
 
-                <button
+                <Button
                    onClick={handleFingerprintRegister}
                    disabled={isFingerprintLoading || !registerUsername.trim()}
-                   className="w-full py-4 rounded-2xl font-black uppercase text-sm tracking-wider bg-purple-600 text-white active:bg-purple-700 shadow-lg shadow-purple-200 disabled:opacity-50 mt-2 min-h-[52px] transition-colors duration-150"
+                   size="lg"
+                   className="w-full min-h-[52px] bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-wider mt-2"
                  >
                    {isFingerprintLoading ? (
                      <><i className="fa-solid fa-spinner animate-spin mr-2"></i>Scanning Fingerprint...</>
                    ) : (
                      <><i className="fa-solid fa-fingerprint mr-2"></i>Enroll Biometric</>
                    )}
-                 </button>
+                 </Button>
 
                  <button 
                    onClick={() => setMode('offline_menu')}
