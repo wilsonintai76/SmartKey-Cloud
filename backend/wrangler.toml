@@ -16,6 +16,10 @@ database_id = "f5ad0733-ce5b-49c5-aed6-5afae9dd8d0c"
 binding = "KV"
 id = "999ef8b6bb814df0ba18e2860312e9c8"
 
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "smartkey-assets"
+
 [vars]
 RP_ID = "localhost"
 RP_NAME = "Key Cabinet"
@@ -41,3 +45,7 @@ database_id = "f5ad0733-ce5b-49c5-aed6-5afae9dd8d0c"
 [[env.production.kv_namespaces]]
 binding = "KV"
 id = "999ef8b6bb814df0ba18e2860312e9c8"
+
+[[env.production.r2_buckets]]
+binding = "ASSETS"
+bucket_name = "smartkey-assets"

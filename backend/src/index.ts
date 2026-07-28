@@ -6,6 +6,7 @@ import authentication, { verifySessionToken } from './webauthn/authentication';
 type Bindings = {
   DB: D1Database;
   KV: KVNamespace;
+  ASSETS: R2Bucket;
   RP_ID?: string;
   RP_NAME?: string;
   ORIGIN?: string;
@@ -193,6 +194,25 @@ app.post('/api/users/register', async (c) => {
   return c.json({ success: true, userId: id, existed: false });
 });
 
+// ── R2 Asset serving ──────────────────────────────────────────────
+
+/**
+ * GET /assets/:filename
+ * Serves assets (logos, icons) from R2 with caching headers.
+ */
+app.get('/assets/:filename', async (c) => {
+  const filename = c.req.param('filename');
+  const object = await c.env.ASSETS.get(filename);
+  if (!object) return c.notFound();
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('Cache-Control', 'public, max-age=86400, immutable');
+  headers.set('ETag', object.httpEtag);
+
+  return new Response(object.body, { headers });
+});
+
 // Root
 app.get('/', (c) => c.json({
   name: 'SmartKey API',
@@ -204,8 +224,12 @@ app.get('/', (c) => c.json({
     '/api/webauthn/auth/complete',
     '/api/webauthn/auth/verify',
     '/api/webauthn/auth/logout',
+    '/api/auth/pin',
+    '/api/users',
+    '/api/users/register',
     '/api/audit/logs',
     '/api/audit/event',
+    '/assets/:filename',
     '/api/health',
   ],
 }));
