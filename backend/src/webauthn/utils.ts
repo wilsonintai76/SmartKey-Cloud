@@ -56,9 +56,9 @@ export function getRegistrationOptions(
     userName: user.username,
     userDisplayName: user.displayName,
     authenticatorSelection: {
-      authenticatorAttachment: 'platform',
+      // No authenticatorAttachment = allow both biometric + USB keys
       residentKey: 'preferred',
-      userVerification: 'required',
+      userVerification: 'preferred',  // 'preferred' = try biometric, fall back gracefully
     },
     supportedAlgorithmIDs: [-7, -257], // ES256 + RS256
   });
@@ -71,6 +71,6 @@ export function getAuthOptions(
   return generateAuthenticationOptions({
     rpID: env.rpId,
     allowCredentials: allowCredentials as any,
-    userVerification: 'required',
+    userVerification: 'preferred',
   });
 }
