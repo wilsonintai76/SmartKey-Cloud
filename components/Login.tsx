@@ -148,7 +148,7 @@ export const Login: React.FC<LoginProps> = ({
           </div>
           
           <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">SecureKey</h1>
-          <p className="text-slate-500 mb-8 text-sm font-bold uppercase tracking-widest opacity-60">Integrated IoT Control Panel</p>
+          <p className="text-slate-500 mb-8 text-sm font-bold uppercase tracking-widest opacity-60">Key Management System</p>
           
           {mode === 'setup' && (
              <div className="space-y-4 animate-fadeIn text-left">
@@ -158,31 +158,31 @@ export const Login: React.FC<LoginProps> = ({
                 </div>
 
                 <div>
-                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Full Name</label>
+                   <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Full Name</label>
                    <input type="text" value={setupName} onChange={e => setSetupName(e.target.value)}
                      placeholder="e.g. Ahmad Zaki"
-                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                     className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold outline-none focus:border-emerald-400 min-h-[48px]" />
                 </div>
 
                 <div>
-                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Email (optional)</label>
+                   <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email (optional)</label>
                    <input type="email" value={setupEmail} onChange={e => setSetupEmail(e.target.value)}
                      placeholder="admin@workshop.com"
-                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                     className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold outline-none focus:border-emerald-400 min-h-[48px]" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                     <label className="text-[9px] font-black uppercase text-slate-400 ml-1">User ID (4-Digit)</label>
+                     <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Staff ID (4-Digit)</label>
                      <input type="text" maxLength={4} value={setupUserId} onChange={e => setSetupUserId(e.target.value.replace(/[^0-9]/g, ''))}
                        placeholder="0000"
-                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400" />
+                       className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400 min-h-[48px]" />
                   </div>
                   <div>
-                     <label className="text-[9px] font-black uppercase text-slate-400 ml-1">PIN (4-6 Digit)</label>
+                     <label className="text-[10px] font-black uppercase text-slate-400 ml-1">PIN (4-6 Digit)</label>
                      <input type="password" maxLength={6} value={setupPin} onChange={e => setSetupPin(e.target.value.replace(/[^0-9]/g, ''))}
                        placeholder="••••••"
-                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400" />
+                       className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400 min-h-[48px]" />
                   </div>
                 </div>
 
@@ -193,7 +193,7 @@ export const Login: React.FC<LoginProps> = ({
                 )}
 
                 <button onClick={handleFirstTimeSetupSubmit}
-                  className="w-full py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-200 mt-2">
+                  className="w-full py-4 rounded-2xl font-black uppercase text-sm tracking-wider bg-emerald-500 text-white active:bg-emerald-600 shadow-lg shadow-emerald-200 mt-2 min-h-[52px] transition-colors duration-150">
                   Create Admin Account
                 </button>
              </div>
@@ -201,66 +201,60 @@ export const Login: React.FC<LoginProps> = ({
 
           {mode === 'offline_menu' && (
              <div className="space-y-4 animate-fadeIn">
-                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-amber-800 text-xs font-medium mb-4">
-                  <p className="font-black uppercase mb-1">Local Failover Protocol</p>
-                  Ensure Bluetooth is enabled on your device to connect to the hardware directly.
+                {/* BLE Status — distinct states */}
+                <div className={`p-4 rounded-2xl border text-xs font-medium mb-4 ${
+                  bluetoothStatus === 'connected' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' :
+                  bluetoothStatus === 'connecting' ? 'bg-blue-50 border-blue-100 text-blue-800' :
+                  bluetoothStatus === 'scanning' ? 'bg-amber-50 border-amber-100 text-amber-800' :
+                  'bg-slate-50 border-slate-100 text-slate-500'
+                }`}>
+                  <p className="font-black uppercase mb-1">
+                    <i className={`fa-solid mr-1 ${
+                      bluetoothStatus === 'connected' ? 'fa-link text-emerald-500' :
+                      bluetoothStatus === 'connecting' ? 'fa-spinner animate-spin text-blue-500' :
+                      bluetoothStatus === 'scanning' ? 'fa-rss animate-pulse text-amber-500' :
+                      'fa-bluetooth-b'
+                    }`}></i>
+                    {bluetoothStatus === 'connected' ? 'Cabinet Connected' :
+                     bluetoothStatus === 'connecting' ? 'Connecting to cabinet...' :
+                     bluetoothStatus === 'scanning' ? 'Scanning for cabinets...' :
+                     'Bluetooth Disconnected'}
+                  </p>
+                  {bluetoothStatus === 'disconnected' && (
+                    <button onClick={() => bluetoothService.startScanning()}
+                      className="text-[10px] font-bold text-blue-600 underline mt-1 min-h-[44px] flex items-center">
+                      <i className="fa-solid fa-magnifying-glass mr-1"></i> Tap to Scan
+                    </button>
+                  )}
+                  {bluetoothStatus === 'connected' && (
+                    <p className="text-[10px] font-bold mt-1">Secure link active — ready to unlock</p>
+                  )}
                 </div>
 
-                 <div className="space-y-4">
-                   <div className="flex items-center justify-between px-1">
-                     <p className="text-[10px] font-black uppercase text-slate-400">Nearby Cabinets</p>
-                     {bluetoothStatus === 'scanning' && (
-                       <i className="fa-solid fa-spinner animate-spin text-blue-500 text-[10px]"></i>
-                     )}
-                   </div>
-
-                   {discoveredDevices.length > 0 ? (
-                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                       {discoveredDevices.map((device) => (
-                         <button
-                           key={device.id}
-                           onClick={() => bluetoothService.connectToDevice(device)}
-                           disabled={bluetoothStatus === 'connecting' || bluetoothStatus === 'connected'}
-                           className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-center justify-between gap-4 group ${
-                             bluetoothStatus === 'connected' ? 'bg-slate-50 border-slate-100 opacity-60' :
-                             'bg-white border-slate-100 hover:border-blue-400 hover:shadow-md'
-                           }`}
-                         >
-                           <div className="flex items-center gap-3">
-                             <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                               <i className="fa-solid fa-bluetooth-b text-blue-600"></i>
-                             </div>
-                             <div>
-                               <p className="text-xs font-black text-slate-900 line-clamp-1">{device.name || 'Unknown Node'}</p>
-                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Proximity: High Signal</p>
-                             </div>
-                           </div>
-                           <i className={`fa-solid ${bluetoothStatus === 'connected' ? 'fa-circle-check text-emerald-500' : 'fa-chevron-right text-slate-300 group-hover:text-blue-500'} transition-transform group-hover:translate-x-0.5`}></i>
-                         </button>
-                       ))}
-                     </div>
-                   ) : (
-                     <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center">
-                       <i className="fa-solid fa-rss text-slate-300 text-2xl mb-2 animate-pulse"></i>
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
-                         Scanning for Bluetooth SecureKey devices...
-                       </p>
-                       <button 
-                         onClick={() => bluetoothService.startScanning()}
-                         className="text-[9px] font-black text-blue-600 uppercase mt-2 hover:underline"
-                       >
-                         Refresh Scope
-                       </button>
-                     </div>
-                   )}
+                 <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                   {discoveredDevices.map((device) => (
+                     <button
+                       key={device.id}
+                       onClick={() => bluetoothService.connectToDevice(device)}
+                       disabled={bluetoothStatus === 'connecting' || bluetoothStatus === 'connected'}
+                       className={`w-full p-3.5 rounded-2xl border-2 transition-all duration-150 text-left flex items-center justify-between gap-3 min-h-[52px] active:scale-[0.98] ${
+                         bluetoothStatus === 'connected' ? 'bg-slate-50 border-slate-100 opacity-60' :
+                         'bg-white border-slate-200 active:border-blue-400 active:shadow-md'
+                       }`}
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                           <i className="fa-solid fa-bluetooth-b text-blue-600"></i>
+                         </div>
+                         <div>
+                           <p className="text-xs font-black text-slate-900 line-clamp-1">{device.name || 'Unknown Node'}</p>
+                           <p className="text-[9px] font-bold text-slate-400 uppercase">Tap to connect</p>
+                         </div>
+                       </div>
+                       <i className={`fa-solid ${bluetoothStatus === 'connected' ? 'fa-circle-check text-emerald-500' : 'fa-chevron-right text-slate-300'}`}></i>
+                     </button>
+                   ))}
                  </div>
-
-                 {bluetoothStatus === 'connected' && (
-                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-emerald-800 text-[10px] font-bold animate-fadeIn">
-                       <i className="fa-solid fa-link mr-2"></i>
-                       SECure DIRECT LINK ACTIVE. CABINET UNLOCKED.
-                    </div>
-                 )}
 
                  {/* ── Biometric Authentication (WebAuthn) ────────────── */}
                  {biometricEnabled && platformAvailable !== null && (
@@ -277,31 +271,29 @@ export const Login: React.FC<LoginProps> = ({
                            value={fingerprintUsername}
                            onChange={e => setFingerprintUsername(e.target.value)}
                            placeholder="Username"
-                           className="w-full bg-white border border-purple-200 p-2.5 rounded-xl text-sm font-bold outline-none focus:border-purple-400 mb-2"
+                           className="w-full bg-white border border-purple-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-purple-400 mb-2 min-h-[48px]"
                            disabled={isFingerprintLoading}
                          />
                          <div className="flex gap-2">
                            <button
                              onClick={handleFingerprintLogin}
                              disabled={isFingerprintLoading || !fingerprintUsername.trim()}
-                             className="flex-1 py-2.5 px-3 rounded-xl font-black uppercase text-[10px] tracking-wider bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                             className="flex-1 py-3 rounded-xl font-black uppercase text-[11px] tracking-wider bg-purple-600 text-white active:bg-purple-700 disabled:opacity-50 transition-colors duration-150 min-h-[48px]"
                            >
                              {isFingerprintLoading ? (
-                               <i className="fa-solid fa-spinner animate-spin"></i>
-                             ) : (
-                               'Sign In'
-                             )}
+                               <><i className="fa-solid fa-spinner animate-spin mr-1"></i>Scanning</>
+                             ) : 'Sign In'}
                            </button>
                            <button
                              onClick={() => { setRegisterUsername(fingerprintUsername); setMode('biometric_register'); }}
                              disabled={isFingerprintLoading}
-                             className="px-3 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-wider bg-white border-2 border-purple-200 text-purple-600 hover:border-purple-400 transition-colors"
+                             className="px-3 py-3 rounded-xl font-black uppercase text-[11px] tracking-wider bg-white border-2 border-purple-200 text-purple-600 active:border-purple-400 transition-colors duration-150 min-h-[48px]"
                            >
                              Register
                            </button>
                          </div>
                          {fingerprintStatus && (
-                           <p className={`text-[9px] font-bold mt-2 text-center uppercase ${
+                           <p className={`text-[10px] font-bold mt-2 text-center ${
                              fingerprintStatus.includes('success') || fingerprintStatus.includes('Waiting')
                                ? 'text-purple-600' : 'text-rose-500'
                            }`}>
@@ -310,9 +302,9 @@ export const Login: React.FC<LoginProps> = ({
                          )}
                        </>
                      ) : (
-                       <p className="text-[10px] font-bold text-slate-500 text-center">
+                       <p className="text-[10px] font-bold text-slate-500 text-center py-2">
                          <i className="fa-solid fa-triangle-exclamation mr-1 text-amber-500"></i>
-                         No platform biometric available on this device.
+                         No biometric enrolled on this device. Use PIN below.
                        </p>
                      )}
                    </div>
@@ -329,10 +321,10 @@ export const Login: React.FC<LoginProps> = ({
 
                  <button 
                    onClick={() => setMode('offline_pin')}
-                   className="w-full py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600"
+                   className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-wider flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-600 active:border-blue-400 active:text-blue-600 transition-colors duration-150 min-h-[52px]"
                  >
                    <i className="fa-solid fa-keyboard"></i>
-                   Manual User ID / PIN
+                   Sign In with Staff ID / PIN
                  </button>
              </div>
           )}
@@ -340,47 +332,47 @@ export const Login: React.FC<LoginProps> = ({
           {mode === 'offline_pin' && (
              <div className="space-y-4 animate-fadeIn text-left">
                 <div>
-                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">User ID (4-Digit)</label>
+                   <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Staff ID (4-Digit)</label>
                    <input 
                      type="text" 
                      maxLength={4}
                      placeholder="0000"
                      value={userId}
                      onChange={(e) => setUserId(e.target.value.replace(/[^0-9]/g, ''))}
-                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-amber-400"
+                     className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-amber-400 min-h-[48px]"
                    />
                 </div>
 
                 <div>
-                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Personal Secure PIN</label>
+                   <label className="text-[10px] font-black uppercase text-slate-400 ml-1">PIN</label>
                    <input 
                      type="password" 
                      placeholder="••••••"
                      maxLength={6}
                      value={pin}
                      onChange={(e) => setPin(e.target.value)}
-                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-amber-400"
+                     className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-amber-400 min-h-[48px]"
                    />
                 </div>
 
                 {offlineStatus && (
-                  <p className={`text-[10px] font-bold text-center uppercase ${offlineStatus.includes('Success') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  <p className={`text-[10px] font-bold text-center ${offlineStatus.includes('Success') ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {offlineStatus}
                   </p>
                 )}
 
                 <button 
                    onClick={handleManualOfflineAuth}
-                   className="w-full py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-200 mt-2"
+                   className="w-full py-4 rounded-2xl font-black uppercase text-sm tracking-wider bg-amber-500 text-white active:bg-amber-600 shadow-lg shadow-amber-200 mt-2 min-h-[52px] transition-colors duration-150"
                  >
-                   Verify Credentials
+                   Verify & Sign In
                  </button>
 
                  <button 
                    onClick={() => setMode('offline_menu')}
-                   className="w-full text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 text-center"
+                   className="w-full py-3 text-[11px] font-bold uppercase text-slate-400 active:text-slate-600 text-center min-h-[44px] flex items-center justify-center"
                  >
-                   Back
+                   <i className="fa-solid fa-arrow-left mr-2"></i> Back
                  </button>
              </div>
           )}
@@ -425,21 +417,21 @@ export const Login: React.FC<LoginProps> = ({
                 )}
 
                 <div>
-                   <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Username</label>
+                   <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Username</label>
                    <input
                      type="text"
                      value={registerUsername}
                      onChange={e => setRegisterUsername(e.target.value)}
-                     placeholder="e.g. jsmith"
-                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-purple-400"
+                     placeholder="e.g. admin"
+                     className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold outline-none focus:border-purple-400 min-h-[48px]"
                      disabled={isFingerprintLoading}
                    />
                 </div>
 
                 {fingerprintStatus && (
-                  <p className={`text-[10px] font-bold text-center uppercase ${
+                  <p className={`text-[10px] font-bold text-center ${
                     fingerprintStatus.includes('success') ? 'text-emerald-500' :
-                    fingerprintStatus.includes('Waiting') ? 'text-purple-500' : 'text-rose-500'
+                    fingerprintStatus.includes('Waiting') || fingerprintStatus.includes('Scanning') ? 'text-purple-500' : 'text-rose-500'
                   }`}>
                     {fingerprintStatus}
                   </p>
@@ -448,10 +440,10 @@ export const Login: React.FC<LoginProps> = ({
                 <button
                    onClick={handleFingerprintRegister}
                    disabled={isFingerprintLoading || !registerUsername.trim()}
-                   className="w-full py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                   className="w-full py-4 rounded-2xl font-black uppercase text-sm tracking-wider bg-purple-600 text-white active:bg-purple-700 shadow-lg shadow-purple-200 disabled:opacity-50 mt-2 min-h-[52px] transition-colors duration-150"
                  >
                    {isFingerprintLoading ? (
-                     <><i className="fa-solid fa-spinner animate-spin mr-2"></i>Scanning...</>
+                     <><i className="fa-solid fa-spinner animate-spin mr-2"></i>Scanning Fingerprint...</>
                    ) : (
                      <><i className="fa-solid fa-fingerprint mr-2"></i>Enroll Biometric</>
                    )}
@@ -459,7 +451,7 @@ export const Login: React.FC<LoginProps> = ({
 
                  <button 
                    onClick={() => setMode('offline_menu')}
-                   className="w-full text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 text-center"
+                   className="w-full py-3 text-[11px] font-bold uppercase text-slate-400 active:text-slate-600 text-center min-h-[44px] flex items-center justify-center"
                  >
                    Back to Sign In
                  </button>
