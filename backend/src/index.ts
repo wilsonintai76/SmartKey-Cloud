@@ -123,6 +123,76 @@ app.post('/api/audit/event', async (c) => {
   return c.json({ success: true });
 });
 
+// ── User sync & PIN auth (cross-device) ───────────────────────────
+
+/**
+ * POST /api/users/sync
+ * Returns all registered users (no auth needed for login screen).
+ * Excludes sensitive data — only returns id, name, staff_id, role.
+ */
+app.get('/api/users', async (c) => {
+  const users = await c.env.DB.prepare(
+    'SELECT id, username, display_name, staff_id FROM users ORDER BY created_at DESC'
+  ).all();
+  return c.json({ users: users.results });
+});
+
+/**
+ * POST /api/auth/pin
+ * Cross-device PIN verification. Takes staff_id + pin, verifies against D1.
+ */
+app.post('/api/auth/pin', async (c) => {
+  const { staffId, pin } = await c.req.json<{ staffId: string; pin: string }>();
+  if (!staffId || !pin) return c.json({ error: 'Staff ID and PIN required' }, 400);
+
+  const user = await c.env.DB.prepare(
+    'SELECT id, username, display_name, staff_id FROM users WHERE staff_id = ? AND pin = ?'
+  ).bind(staffId, pin).first();
+
+  if (!user) return c.json({ error: 'Invalid credentials' }, 401);
+
+  return c.json({
+    success: true,
+    user: {
+      id: user.id,
+      name: user.display_name || user.username,
+      staffId: user.staff_id,
+    },
+  });
+});
+
+/**
+ * POST /api/users/register
+ * Sync local first-time setup to D1. Creates or updates user with PIN.
+ */
+app.post('/api/users/register', async (c) => {
+  const { name, email, staffId, pin } = await c.req.json<{
+    name: string; email?: string; staffId: string; pin: string;
+  }>();
+  if (!name || !staffId || !pin) return c.json({ error: 'Name, staff ID, and PIN required' }, 400);
+
+  const db = c.env.DB;
+  const id = crypto.randomUUID();
+  const username = staffId; // use staff_id as username for WebAuthn compatibility
+
+  // Check if staff_id already exists
+  const existing = await db.prepare('SELECT id FROM users WHERE staff_id = ? OR username = ?')
+    .bind(staffId, username).first();
+
+  if (existing) {
+    // Update existing user's PIN
+    await db.prepare('UPDATE users SET pin = ?, display_name = ? WHERE id = ?')
+      .bind(pin, name, existing.id).run();
+    return c.json({ success: true, userId: existing.id, existed: true });
+  }
+
+  await db.prepare(
+    'INSERT INTO users (id, username, display_name, staff_id, pin, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(id, username, name, staffId, pin, Date.now()).run();
+
+  return c.json({ success: true, userId: id, existed: false });
+});
+
 // Root
 app.get('/', (c) => c.json({
   name: 'SmartKey API',

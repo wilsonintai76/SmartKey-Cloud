@@ -8,6 +8,7 @@ import { bluetoothService } from './services/bluetoothService';
 import { keyCabinetDB } from './services/keyCabinetDB';
 import { syncLogs } from './services/syncService';
 import { getSessionToken, clearSessionToken, recordAuditEvent, verifySession, logoutSession } from './services/webauthnService';
+import { fetchCloudUsers, verifyCloudPin, registerCloudUser } from './services/webauthnService';
 
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
@@ -85,6 +86,32 @@ export const App: React.FC = () => {
     if (storedUsers) { try { setRegisteredUsers(JSON.parse(storedUsers)); } catch {} }
     const storedSlots = localStorage.getItem('smartkey_slots');
     if (storedSlots) { try { setSlots(JSON.parse(storedSlots)); } catch {} }
+
+    // Fetch cloud users from D1 and merge with localStorage (cross-device sync)
+    if (navigator.onLine) {
+      fetchCloudUsers().then(cloudUsers => {
+        if (cloudUsers.length > 0) {
+          const localUsers: UserProfileData[] = storedUsers ? JSON.parse(storedUsers) : [];
+          const merged = [...localUsers];
+          for (const cu of cloudUsers) {
+            if (!merged.find(u => u.id === cu.id)) {
+              merged.push({
+                id: cu.id,
+                name: cu.name,
+                email: '',
+                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cu.name)}&background=6366f1&color=fff&size=128`,
+                status: 'active' as const,
+                role: 'staff' as const,
+                userId: cu.staffId,
+                offlinePin: '', // PIN stays server-side, verified via API
+              });
+            }
+          }
+          setRegisteredUsers(merged);
+          localStorage.setItem('smartkey_users', JSON.stringify(merged));
+        }
+      }).catch(() => {});
+    }
 
     // Try to recover a previous WebAuthn session
     const token = getSessionToken();
@@ -234,19 +261,54 @@ export const App: React.FC = () => {
     setLogs(prev => [newLog, ...prev]);
   };
 
-  const handleLocalLogin = (userId: string, pin: string): boolean => {
+  const handleLocalLogin = async (userId: string, pin: string): Promise<boolean> => {
+    // First try local (offline) verification
     const found = registeredUsers.find(u => (u.userId === userId || u.id === userId) && u.offlinePin === pin);
     if (found) {
-      setTimeout(() => {
-        setUser(found);
-        addLog(found.name, 'Local Login', 'System', 'success', found.id);
-        showToast({ title: 'Local Access Granted', message: `Welcome, ${found.name}`, type: 'success' });
-        if (!isBluetoothConnected) bluetoothService.connect().catch(e => showGlobalError(e.message));
-      }, 500);
+      completeLocalLogin(found);
       return true;
     }
-    showToast({ title: 'Access Denied', message: 'Invalid credentials.', type: 'danger' });
+
+    // Fallback: try cloud PIN verification (for cross-device login)
+    if (navigator.onLine) {
+      const result = await verifyCloudPin(userId, pin);
+      if (result?.user) {
+        const cloudUser: UserProfileData = {
+          id: result.user.id,
+          name: result.user.name,
+          email: '',
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}&background=6366f1&color=fff&size=128`,
+          status: 'active',
+          role: 'staff',
+          userId: result.user.staffId,
+          offlinePin: pin, // cache PIN locally for offline use
+        };
+        // Save to local state + localStorage for future offline use
+        setRegisteredUsers(prev => {
+          const updated = prev.filter(u => u.id !== cloudUser.id);
+          return [...updated, cloudUser];
+        });
+        setTimeout(() => {
+          localStorage.setItem('smartkey_users', JSON.stringify(
+            [...registeredUsers.filter(u => u.id !== cloudUser.id), cloudUser]
+          ));
+        }, 0);
+        completeLocalLogin(cloudUser);
+        return true;
+      }
+    }
+
+    showToast({ title: 'Access Denied', message: 'Invalid credentials. Check Staff ID and PIN.', type: 'danger' });
     return false;
+  };
+
+  const completeLocalLogin = (found: UserProfileData) => {
+    setTimeout(() => {
+      setUser(found);
+      addLog(found.name, 'Local Login', 'System', 'success', found.id);
+      showToast({ title: 'Local Access Granted', message: `Welcome, ${found.name}`, type: 'success' });
+      if (!isBluetoothConnected) bluetoothService.connect().catch(e => showGlobalError(e.message));
+    }, 500);
   };
 
   const handleWebAuthnLogin = (userId: string, userName: string, token?: string) => {
@@ -302,6 +364,9 @@ export const App: React.FC = () => {
     setRegisteredUsers(prev => [...prev, newAdmin]);
     addLog(name, 'First Time Setup', 'System', 'success', newAdmin.id);
     showToast({ title: 'Setup Complete', message: `Admin account created. Welcome, ${name}!`, type: 'success' });
+
+    // Sync to D1 so the account works on other devices too
+    registerCloudUser(name, userId, pin).catch(() => {});
   };
 
   const handleAddUser = (name: string, userId: string, pin: string, role: 'staff' | 'admin') => {

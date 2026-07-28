@@ -141,6 +141,70 @@ export async function logoutSession(): Promise<void> {
   clearSessionToken();
 }
 
+// ── Cross-device PIN auth (cloud-backed) ──────────────────────────
+
+const USERS_API = import.meta.env.VITE_CLOUD_API?.replace('/sync', '') || '/api';
+
+export interface CloudUser {
+  id: string;
+  name: string;
+  staffId: string;
+  username?: string;
+  display_name?: string;
+}
+
+export interface PinAuthResult {
+  success: boolean;
+  user: CloudUser;
+}
+
+/** Fetch all registered users from D1 (for login screen on new devices) */
+export async function fetchCloudUsers(): Promise<CloudUser[]> {
+  try {
+    const res = await fetch(`${USERS_API}/users`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.users || []).map((u: any) => ({
+      id: u.id,
+      name: u.display_name || u.username,
+      staffId: u.staff_id,
+      username: u.username,
+      display_name: u.display_name,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Verify PIN against D1 (cross-device fallback) */
+export async function verifyCloudPin(staffId: string, pin: string): Promise<PinAuthResult | null> {
+  try {
+    const res = await fetch(`${USERS_API}/auth/pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId, pin }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** Sync first-time setup user to D1 */
+export async function registerCloudUser(name: string, staffId: string, pin: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${USERS_API}/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, staffId, pin }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ── Audit logging (authenticated) ─────────────────────────────────
 
 export async function recordAuditEvent(
