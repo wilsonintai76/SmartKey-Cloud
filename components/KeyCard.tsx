@@ -13,6 +13,7 @@ interface KeyCardProps {
   gracePeriod: number;
   maintenanceThreshold: number;
   isQueued?: boolean; // New Prop
+  isBluetoothConnected?: boolean;
   currentUser?: { name: string; id: string } | null;
   onUpdateSlot?: (id: number, updates: Partial<KeySlot>) => void;
   onAddLog?: (userName: string, action: string, message: string, type: "success" | "info" | "warning" | "error", userId?: string, slotId?: number) => void;
@@ -29,6 +30,7 @@ export const KeyCard: React.FC<KeyCardProps> = ({
   gracePeriod, 
   maintenanceThreshold,
   isQueued = false,
+  isBluetoothConnected = false,
   currentUser,
   onUpdateSlot,
   onAddLog
@@ -177,7 +179,7 @@ export const KeyCard: React.FC<KeyCardProps> = ({
              </div>
            ) : (
              <p className={`text-[9px] font-black uppercase tracking-[0.3em] ${isQueued ? 'text-yellow-600' : isCritical ? 'text-amber-600' : 'text-slate-400'}`}>
-               {isQueued ? 'Waiting for Door...' : isUnlocked ? 'Door Unlocked...' : isSystemLocked ? 'Lockdown Active' : isCritical ? 'Maintenance Due' : 'Key Detected'}
+               {isQueued ? 'Waiting for Door...' : isUnlocked ? 'Door Unlocked...' : isSystemLocked ? 'Lockdown Active' : isCritical ? 'Maintenance Due' : isBluetoothConnected ? 'Key Detected' : 'No Signal'}
              </p>
            )}
         </div>

@@ -141,6 +141,7 @@ export const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
               gracePeriod={config.gracePeriod}
               maintenanceThreshold={config.maintenanceThreshold}
               isQueued={unlockQueue.includes(s.id)}
+              isBluetoothConnected={isBluetoothConnected}
               currentUser={currentUser}
               onUpdateSlot={onUpdateSlot}
               onAddLog={onAddLog}
