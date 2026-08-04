@@ -40,8 +40,8 @@ export const TelemetryCard: React.FC<TelemetryCardProps> = ({ status }) => {
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase text-slate-400">Cabinet Door</p>
-                <p className={`text-xs font-black uppercase ${status?.doorOpen ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {status?.doorOpen ? 'OPEN' : 'LOCKED'}
+                <p className={`text-xs font-black uppercase ${!status?.online ? 'text-slate-500' : status.doorOpen ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {!status?.online ? '-- NO DATA' : status.doorOpen ? 'OPEN' : 'LOCKED'}
                 </p>
               </div>
             </div>

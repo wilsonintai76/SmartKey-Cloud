@@ -191,7 +191,8 @@ export const App: React.FC = () => {
     const unsub = bluetoothService.onStatusChange(status => {
       setBluetoothStatus(status);
       if (status === 'connected') showToast({ title: 'Bluetooth Linked', message: 'Secure peer-to-peer connection established.', type: 'success' });
-      else if (status === 'error') showToast({ title: 'Bluetooth Error', message: 'Pairing failed.', type: 'danger' });
+      else if (status === 'disconnected' || status === 'error') setControllerStatus(undefined); // clear stale telemetry
+      if (status === 'error') showToast({ title: 'Bluetooth Error', message: 'Pairing failed.', type: 'danger' });
     });
     bluetoothService.onDataReceived(data => {
       const status = bluetoothService.parseStatus(data);
