@@ -43,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
                   SecureKey
                 </h1>
                 <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[7px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">v2.5.3</span>
                   <div className={`flex items-center gap-1.5 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md border transition-all flex-shrink-0 ${
                     bluetoothStatus === 'connected' ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm'
                     : bluetoothStatus === 'scanning' || bluetoothStatus === 'connecting' ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'

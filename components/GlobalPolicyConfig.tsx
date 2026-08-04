@@ -15,7 +15,6 @@ export const GlobalPolicyConfig: React.FC<GlobalPolicyConfigProps> = ({
   tempConfig,
   setTempConfig,
   onSave,
-  isMqttConnected,
   isBluetoothConnected = false,
   bluetoothStatus = 'disconnected'
 }) => {
@@ -26,10 +25,6 @@ export const GlobalPolicyConfig: React.FC<GlobalPolicyConfigProps> = ({
           <i className="fa-solid fa-sliders text-blue-600"></i> Global Policy Config
         </h3>
         <div className="flex flex-col items-end gap-1.5">
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black uppercase ${isMqttConnected ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${isMqttConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
-            {isMqttConnected ? 'Cloud Active' : 'Cloud Idle'}
-          </div>
           <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black uppercase ${isBluetoothConnected ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>
             <div className={`w-1.5 h-1.5 rounded-full ${isBluetoothConnected ? 'bg-blue-500 animate-pulse' : 'bg-slate-300'}`}></div>
             {isBluetoothConnected ? 'BT Stream Active' : String(bluetoothStatus).toUpperCase()}
@@ -84,28 +79,22 @@ export const GlobalPolicyConfig: React.FC<GlobalPolicyConfigProps> = ({
           />
         </div>
 
-        {/* Offline Storage Preference */}
+        {/* Data Storage */}
         <div>
           <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">
-            Offline Storage Primary
+            Data Storage
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button 
-              onClick={() => setTempConfig({...tempConfig, offlineStorage: 'browser'})}
-              className={`p-3 rounded-xl border text-[10px] font-black uppercase transition-all ${tempConfig.offlineStorage === 'browser' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-400 border-slate-200'}`}
-            >
-              <i className="fa-solid fa-database mr-2"></i> PWA IndexedDB
-            </button>
-            <button 
-              onClick={() => setTempConfig({...tempConfig, offlineStorage: 'board'})}
-              className={`p-3 rounded-xl border text-[10px] font-black uppercase transition-all ${tempConfig.offlineStorage === 'board' ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-50 text-slate-400 border-slate-200'}`}
-            >
-              <i className="fa-solid fa-microchip mr-2"></i> ESP32 SPIFFS
-            </button>
+          <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <i className="fa-solid fa-cloud text-xs"></i>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-emerald-700">Cloudflare D1 (SQLite)</p>
+                <p className="text-[8px] text-emerald-500">Audit logs &amp; configuration stored in server-side SQLite.</p>
+              </div>
+            </div>
           </div>
-          <p className="text-[8px] text-slate-400 mt-2 italic px-1">
-            Determines where logs are cached when primary online stream is lost.
-          </p>
         </div>
         <div>
           <div className="flex justify-between mb-2">

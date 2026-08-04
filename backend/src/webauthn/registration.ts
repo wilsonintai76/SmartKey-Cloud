@@ -90,7 +90,15 @@ app.post('/register/complete', async (c) => {
     return c.json({ error: `Verification failed: ${err.message}` }, 400);
   }
 
-  if (!verification.verified || !verification.registrationInfo) {
+  if (!verification.verified || !verification.registrationInfo?.credential) {
+    console.error('[register/complete] Verification details:', {
+      verified: verification.verified,
+      hasRegistrationInfo: !!verification.registrationInfo,
+      hasCredential: !!verification.registrationInfo?.credential,
+      origin: env.origin,
+      rpId: env.rpId,
+      challengeExists: !!challenge,
+    });
     return c.json({ error: 'Registration verification failed — device attestation rejected' }, 400);
   }
 

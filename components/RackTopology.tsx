@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { KeySlot, KeyStatus } from '../types';
+import { KeySlot, KeyStatus, ControllerStatus } from '../types';
 
 interface RackTopologyProps {
   slots: KeySlot[];
@@ -14,9 +14,9 @@ interface RackTopologyProps {
   onEmergencyRelease: () => Promise<void>;
   onUnlockDoor?: () => void;
   isEmergencySequencing: boolean;
-  sequenceProgress: string;
   isHardwareTriggerActive?: boolean; 
   doorOpen?: boolean;
+  controllerStatus?: ControllerStatus;
 }
 
 export const RackTopology: React.FC<RackTopologyProps> = ({
@@ -31,10 +31,11 @@ export const RackTopology: React.FC<RackTopologyProps> = ({
   onEmergencyRelease,
   onUnlockDoor,
   isEmergencySequencing,
-  sequenceProgress,
   isHardwareTriggerActive,
-  doorOpen = false
+  doorOpen = false,
+  controllerStatus
 }) => {
+  const isOnline = controllerStatus?.online ?? false;
   const getRackName = (index: number) => `Pegboard ${String(index + 1).padStart(2, '0')}`;
 
   const chunkedSlots: KeySlot[][] = [];
@@ -155,30 +156,16 @@ export const RackTopology: React.FC<RackTopologyProps> = ({
               {isSystemLocked ? 'Clear Lockdown' : 'Soft Lockdown'}
             </button>
 
-            {/* HARDWARE E-STOP STATUS INDICATOR (Non-Interactive) */}
+            {/* CONTROLLER STATUS INDICATOR (Non-Interactive) */}
             <div 
               className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl flex flex-col items-center justify-center gap-2 relative overflow-hidden ${
-                isHardwareTriggerActive
-                  ? 'bg-white border-2 border-rose-500 text-rose-600 animate-pulse' 
-                  : 'bg-slate-100 text-slate-300 border border-slate-200' 
+                isOnline
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                  : 'bg-rose-50 text-rose-500 border border-rose-200' 
               } ${isEmergencySequencing ? 'opacity-80' : ''}`}
             >
-               {isEmergencySequencing ? (
-                 <>
-                   <i className="fa-solid fa-spinner animate-spin text-lg"></i>
-                   <span>Sequencing {sequenceProgress}</span>
-                 </>
-               ) : isHardwareTriggerActive ? (
-                 <>
-                   <i className="fa-solid fa-hand text-lg"></i>
-                   <span>E-Stop Engaged</span>
-                 </>
-               ) : (
-                 <>
-                   <i className="fa-solid fa-check text-lg"></i>
-                   <span>Hardware Secure</span>
-                 </>
-               )}
+               <i className={`fa-solid ${isOnline ? 'fa-wifi' : 'fa-plug-circle-xmark'} text-lg`}></i>
+               <span>{isOnline ? 'Controller Online' : 'Controller Offline'}</span>
             </div>
         </div>
         <div className="pt-3">
@@ -199,7 +186,7 @@ export const RackTopology: React.FC<RackTopologyProps> = ({
         </div>
 
         <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-widest mt-1">
-          {isHardwareTriggerActive ? "Warning: Physical Button is LATCHED. Twist to release." : "System Normal: Safety Circuit Closed"}
+          {isOnline ? "Controller link active." : "Controller unreachable. Connect via BLE."}
         </p>
       </div>
     </div>

@@ -12,6 +12,15 @@ import {
   AuthResult,
 } from '../services/webauthnService';
 
+// Detect Capacitor native mode at runtime
+function isCapacitorNative(): boolean {
+  try {
+    return (window as any).Capacitor?.isNativePlatform?.() === true;
+  } catch {
+    return false;
+  }
+}
+
 interface UseWebAuthnState {
   isLoading: boolean;
   error: string | null;
@@ -26,6 +35,8 @@ interface UseWebAuthnReturn extends UseWebAuthnState {
   register: (username: string) => Promise<boolean>;
   /** Authenticate with existing biometric credential */
   authenticate: (username: string) => Promise<boolean>;
+  /** Authenticate usernameless — browser shows native user picker */
+  authenticateUsernameless: () => Promise<boolean>;
   /** Log out (revoke session, clear state) */
   logout: () => void;
   /** Dismiss current error */
@@ -62,6 +73,11 @@ export function useWebAuthn(): UseWebAuthnReturn {
 
   // Check platform authenticator availability on mount
   useEffect(() => {
+    if (isCapacitorNative()) {
+      // Capacitor native mode — WebAuthn not available, use native biometrics plugin
+      setState(prev => ({ ...prev, isSupported: false, isPlatformAvailable: false }));
+      return;
+    }
     const supported = typeof window !== 'undefined' && !!window.PublicKeyCredential;
     setState(prev => ({ ...prev, isSupported: supported }));
 
@@ -75,6 +91,10 @@ export function useWebAuthn(): UseWebAuthnReturn {
   // ── Registration ──────────────────────────────────────────────
 
   const register = useCallback(async (username: string): Promise<boolean> => {
+    if (isCapacitorNative()) {
+      setState(prev => ({ ...prev, isLoading: false, error: 'Use device Settings → Security to enroll fingerprint, then use the "Native Biometric Login" button.' }));
+      return false;
+    }
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
       // 1. Get registration options from server
@@ -88,7 +108,7 @@ export function useWebAuthn(): UseWebAuthnReturn {
         origin: window.location.origin,
         isSecureContext: window.isSecureContext,
         alreadyRegistered,
-        platformAvailable: isPlatformAvailable,
+        platformAvailable: state.isPlatformAvailable,
       });
 
       // If already registered, warn but allow re-enrollment (for new devices)
@@ -142,6 +162,10 @@ export function useWebAuthn(): UseWebAuthnReturn {
   // ── Authentication ────────────────────────────────────────────
 
   const authenticate = useCallback(async (username: string): Promise<boolean> => {
+    if (isCapacitorNative()) {
+      setState(prev => ({ ...prev, isLoading: false, error: 'WebAuthn unavailable in app mode. Use PIN login or Native Biometric Login.' }));
+      return false;
+    }
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
       // 1. Get authentication options from server
@@ -151,6 +175,41 @@ export function useWebAuthn(): UseWebAuthnReturn {
       const assertionResponse = await startAuthentication({ optionsJSON: options });
 
       // 3. Verify + get JWT session token
+      const result: AuthResult = await completeAuthentication(assertionResponse, options.challenge);
+
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        user: result.user,
+        sessionToken: result.token,
+      }));
+      return true;
+    } catch (err: any) {
+      const detail = err.name ? `[${err.name}] ` : '';
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: `${detail}${err.message || 'Authentication failed.'}`,
+      }));
+      return false;
+    }
+  }, []);
+
+  // ── Usernameless / Passkey auth ────────────────────────────────
+
+  const authenticateUsernameless = useCallback(async (): Promise<boolean> => {
+    if (isCapacitorNative()) {
+      setState(prev => ({ ...prev, isLoading: false, error: 'Use PIN login in app mode.' }));
+      return false;
+    }
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    try {
+      // No username — server returns options with empty allowCredentials
+      // Browser shows native user picker from resident keys
+      const options = await beginAuthentication();
+
+      const assertionResponse = await startAuthentication({ optionsJSON: options });
+
       const result: AuthResult = await completeAuthentication(assertionResponse, options.challenge);
 
       setState(prev => ({
@@ -206,5 +265,5 @@ export function useWebAuthn(): UseWebAuthnReturn {
 
   const clearError = useCallback(() => setState(prev => ({ ...prev, error: null })), []);
 
-  return { ...state, register, authenticate, logout, clearError, recoverSession };
+  return { ...state, register, authenticate, authenticateUsernameless, logout, clearError, recoverSession };
 }

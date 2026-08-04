@@ -76,9 +76,9 @@ export function getRegistrationOptions(
     attestationType: 'none',
     excludeCredentials: excludeCredentials as any,
     authenticatorSelection: {
-      // No authenticatorAttachment = allow both biometric + USB keys
-      residentKey: 'preferred',
-      userVerification: 'preferred',  // 'preferred' = try biometric, fall back gracefully
+      authenticatorAttachment: 'platform',  // built-in biometrics only — not USB keys
+      residentKey: 'required',              // needed for usernameless login
+      userVerification: 'required',         // force biometric/PIN, not just device presence
     },
     supportedAlgorithmIDs: [-7, -257], // ES256 + RS256
   });
@@ -91,6 +91,6 @@ export function getAuthOptions(
   return generateAuthenticationOptions({
     rpID: env.rpId,
     allowCredentials: allowCredentials as any,
-    userVerification: 'preferred',
+    userVerification: 'required',  // force biometric/PIN verification
   });
 }

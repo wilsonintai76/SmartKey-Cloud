@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const pkgVersion = process.env.npm_package_version || '0.0.0';
     return {
       server: {
         port: 3000,
@@ -24,10 +25,11 @@ export default defineConfig(({ mode }) => {
           registerType: 'autoUpdate',
           includeAssets: ['favicon.ico'],
           manifest: {
-            name: 'Key Cabinet',
-            short_name: 'Cabinet',
+            name: 'SecureKey',
+            short_name: 'SecureKey',
             theme_color: '#0f172a',
             start_url: '/',
+            version: pkgVersion,
             display: 'standalone',
             icons: [
               { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -41,7 +43,8 @@ export default defineConfig(({ mode }) => {
       ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        __APP_VERSION__: JSON.stringify(pkgVersion),
       },
       resolve: {
         alias: {

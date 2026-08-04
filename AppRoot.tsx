@@ -1,14 +1,17 @@
 ﻿import React, { useState, useEffect } from 'react';
+// @ts-ignore
+const APP_VERSION = (typeof __APP_VERSION__ !== 'undefined') ? __APP_VERSION__ : 'dev';
+console.log('[SecureKey] v' + APP_VERSION);
+import { useVersionCheck } from './hooks/useVersionCheck';
 import {
   KeySlot, LogEntry, UserAccount as UserProfileData,
   SystemConfig, ControllerStatus, KeyStatus, BluetoothStatus,
 } from './types';
 import { INITIAL_SLOTS, DEFAULT_SYSTEM_CONFIG } from './constants';
 import { bluetoothService } from './services/bluetoothService';
-import { keyCabinetDB } from './services/keyCabinetDB';
-import { syncLogs } from './services/syncService';
+import { queueAuditEvent, flushAuditQueue, getQueueLength } from './services/offlineQueue';
 import { getSessionToken, clearSessionToken, recordAuditEvent, verifySession, logoutSession } from './services/webauthnService';
-import { fetchCloudUsers, verifyCloudPin, registerCloudUser } from './services/webauthnService';
+import { fetchCloudUsers, verifyCloudPin, deleteCloudUser, registerCloudUser } from './services/webauthnService';
 
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
@@ -81,7 +84,7 @@ export const App: React.FC = () => {
   // ── Init: Load local data + try session recovery ────────────────
   useEffect(() => {
     const stored = localStorage.getItem('smartkey_config');
-    if (stored) { try { setConfig(JSON.parse(stored)); setTempConfig(JSON.parse(stored)); } catch {} }
+    if (stored) { try { const parsed = JSON.parse(stored); parsed.biometricEnabled = true; setConfig(parsed); setTempConfig(parsed); } catch {} }
     const storedUsers = localStorage.getItem('smartkey_users');
     if (storedUsers) { try { setRegisteredUsers(JSON.parse(storedUsers)); } catch {} }
     const storedSlots = localStorage.getItem('smartkey_slots');
@@ -101,8 +104,9 @@ export const App: React.FC = () => {
                 email: '',
                 avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cu.name)}&background=6366f1&color=fff&size=128`,
                 status: 'active' as const,
-                role: 'staff' as const,
+                role: (cu as any).role === 'admin' ? 'admin' as const : 'staff' as const,
                 userId: cu.staffId,
+                contact: (cu as any).contact || '',
                 offlinePin: '', // PIN stays server-side, verified via API
               });
             }
@@ -141,13 +145,44 @@ export const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('smartkey_users', JSON.stringify(registeredUsers)); }, [registeredUsers]);
   useEffect(() => { localStorage.setItem('smartkey_slots', JSON.stringify(slots)); }, [slots]);
 
-  // ── Online/Offline ──────────────────────────────────────────────
+  // ── Version check: detect new deployments ──────────────────────
+  useVersionCheck((current, latest) => {
+    showToast({
+      title: 'Update Available',
+      message: `New version ${latest} available (you're on ${current}). Tap to refresh.`,
+      type: 'info',
+      action: () => window.location.reload(),
+    });
+  });
+
+  // ── Online/Offline + Offline Queue Flush ────────────────────────
   useEffect(() => {
-    const handleOnline = () => { setIsOnline(true); syncLogs().catch(() => {}); };
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Flush any queued audit events to D1
+      flushAuditQueue(async (event) => {
+        const token = getSessionToken();
+        if (!token) return false;
+        try {
+          const res = await fetch('/api/audit/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+              action: event.action,
+              slotLabel: event.slotLabel,
+              pegStateBefore: event.pegStateBefore,
+              pegStateAfter: event.pegStateAfter,
+            }),
+          });
+          return res.ok;
+        } catch { return false; }
+      }).then(({ flushed }) => {
+        if (flushed > 0) showToast({ title: 'Queue Flushed', message: `${flushed} offline event(s) synced to cloud.`, type: 'success' });
+      }).catch(() => {});
+    };
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    if (navigator.onLine) syncLogs().catch(() => {});
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
   }, []);
 
@@ -165,22 +200,21 @@ export const App: React.FC = () => {
     return () => unsub();
   }, []);
 
-  // ── BLE Key Presence → IndexedDB + Slot State + Cloud Audit ────
+  // ── BLE Key Presence → Slot State + Cloud Audit (D1 SQLite) ──
   useEffect(() => {
     const unsub = bluetoothService.onKeyPresence(keyPresent => {
-      const action = keyPresent ? 'RETURNED' : 'TAKEN';
-      keyCabinetDB.addLog({ userId: user?.id || 'unknown', userName: user?.name || 'Unknown', action, slotLabel: 'Cabinet', timestamp: Date.now() })
-        .then(() => { if (navigator.onLine) syncLogs().catch(() => {}); })
-        .catch(err => console.warn('IndexedDB write failed:', err));
+      const action = keyPresent ? 'cabinet_close' : 'cabinet_open';
+      const pegBefore = keyPresent ? 'BORROWED' : 'AVAILABLE';
+      const pegAfter = keyPresent ? 'AVAILABLE' : 'BORROWED';
 
-      // ── Cloud audit log (if session token is active) ────────────
-      if (sessionToken && navigator.onLine && user?.id) {
-        recordAuditEvent(
-          keyPresent ? 'cabinet_close' : 'cabinet_open',
-          'Cabinet',
-          keyPresent ? 'BORROWED' : 'AVAILABLE',
-          keyPresent ? 'AVAILABLE' : 'BORROWED'
-        ).catch(() => {});
+      if (sessionToken && user?.id) {
+        if (navigator.onLine) {
+          // Online → send directly to D1
+          recordAuditEvent(action, 'Cabinet', pegBefore, pegAfter).catch(() => {});
+        } else {
+          // Offline → queue for later delivery
+          queueAuditEvent({ action, slotLabel: 'Cabinet', pegStateBefore: pegBefore, pegStateAfter: pegAfter });
+        }
       }
 
       // ── Update slot state from hardware microswitch ─────────────
@@ -262,14 +296,7 @@ export const App: React.FC = () => {
   };
 
   const handleLocalLogin = async (userId: string, pin: string): Promise<boolean> => {
-    // First try local (offline) verification
-    const found = registeredUsers.find(u => (u.userId === userId || u.id === userId) && u.offlinePin === pin);
-    if (found) {
-      completeLocalLogin(found);
-      return true;
-    }
-
-    // Fallback: try cloud PIN verification (for cross-device login)
+    // Source of truth: D1 (cloud) first
     if (navigator.onLine) {
       const result = await verifyCloudPin(userId, pin);
       if (result?.user) {
@@ -279,11 +306,10 @@ export const App: React.FC = () => {
           email: '',
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}&background=6366f1&color=fff&size=128`,
           status: 'active',
-          role: 'staff',
+          role: (result.user as any).role === 'admin' ? 'admin' : 'staff',
           userId: result.user.staffId,
           offlinePin: pin, // cache PIN locally for offline use
         };
-        // Save to local state + localStorage for future offline use
         setRegisteredUsers(prev => {
           const updated = prev.filter(u => u.id !== cloudUser.id);
           return [...updated, cloudUser];
@@ -298,6 +324,13 @@ export const App: React.FC = () => {
       }
     }
 
+    // Offline fallback: verify against cached users
+    const found = registeredUsers.find(u => (u.userId === userId || u.id === userId) && u.offlinePin === pin);
+    if (found) {
+      completeLocalLogin(found);
+      return true;
+    }
+
     showToast({ title: 'Access Denied', message: 'Invalid credentials. Check Staff ID and PIN.', type: 'danger' });
     return false;
   };
@@ -305,8 +338,8 @@ export const App: React.FC = () => {
   const completeLocalLogin = (found: UserProfileData) => {
     setTimeout(() => {
       setUser(found);
-      addLog(found.name, 'Local Login', 'System', 'success', found.id);
-      showToast({ title: 'Local Access Granted', message: `Welcome, ${found.name}`, type: 'success' });
+      addLog(found.name, 'PIN Login', 'System', 'success', found.id);
+      showToast({ title: 'Access Granted', message: `Welcome, ${found.name}`, type: 'success' });
       if (!isBluetoothConnected) bluetoothService.connect().catch(e => showGlobalError(e.message));
     }, 500);
   };
@@ -350,39 +383,20 @@ export const App: React.FC = () => {
     setView('dashboard');
   };
 
-  const handleFirstTimeSetup = (name: string, email: string, userId: string, pin: string) => {
-    const newAdmin: UserProfileData = {
-      id: crypto.randomUUID(),
-      name,
-      email: email || `${userId}@smartkey.local`,
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0f172a&color=fff&size=128`,
-      status: 'active',
-      role: 'admin',
-      userId,
-      offlinePin: pin,
-    };
-    setRegisteredUsers(prev => [...prev, newAdmin]);
-    addLog(name, 'First Time Setup', 'System', 'success', newAdmin.id);
-    showToast({ title: 'Setup Complete', message: `Admin account created. Welcome, ${name}!`, type: 'success' });
-
-    // Sync to D1 so the account works on other devices too
-    registerCloudUser(name, userId, pin).catch(() => {});
+  const handleSelfRegister = async (name: string, staffId: string, pin: string): Promise<boolean> => {
+    const ok = await registerCloudUser(name, staffId, pin);
+    if (ok) {
+      showToast({ title: 'Account Created', message: `${name} registered.`, type: 'success' });
+    }
+    return ok;
   };
 
-  const handleAddUser = (name: string, userId: string, pin: string, role: 'staff' | 'admin') => {
-    const newUser: UserProfileData = {
-      id: crypto.randomUUID(),
-      name,
-      email: `${userId}@smartkey.local`,
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=475569&color=fff&size=128`,
-      status: 'active',
-      role,
-      userId,
-      offlinePin: pin,
-    };
-    setRegisteredUsers(prev => [...prev, newUser]);
-    addLog(user?.name || 'System', 'User Created', name, 'success', newUser.id);
-    showToast({ title: 'User Added', message: `${name} (${userId}) created as ${role}.`, type: 'success' });
+  const handleAdminAddUser = async (name: string, staffId: string, pin: string, role: 'staff' | 'admin'): Promise<boolean> => {
+    const ok = await registerCloudUser(name, staffId, pin);
+    if (ok) {
+      showToast({ title: 'User Added', message: `${name} added as ${role}.`, type: 'success' });
+    }
+    return ok;
   };
 
   // ── Slot Actions (BLE-only) ─────────────────────────────────────
@@ -435,9 +449,8 @@ export const App: React.FC = () => {
   if (!user) {
     return (<>
       <ToastContainer toast={uiState.toast} globalError={uiState.globalError} onClearToast={clearToast} onClearGlobalError={clearGlobalError} />
-      <Login onLogin={() => {}} onLocalLogin={handleLocalLogin} onWebAuthnLogin={handleWebAuthnLogin}
-        onWebAuthnRegister={handleWebAuthnRegister}
-        onFirstTimeSetup={handleFirstTimeSetup} isFirstTime={registeredUsers.length === 0}
+      <Login onLogin={() => {}} onPinLogin={handleLocalLogin} onWebAuthnLogin={handleWebAuthnLogin}
+        onWebAuthnRegister={handleWebAuthnRegister} onSelfRegister={handleSelfRegister}
         isAuthenticating={uiState.isAuthenticating} systemID={config.systemID} bluetoothStatus={bluetoothStatus}
         biometricEnabled={config.biometricEnabled} />
     </>);
@@ -447,7 +460,7 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100 flex flex-col relative overflow-hidden pb-20 md:pb-0">
       <ToastContainer toast={uiState.toast} globalError={uiState.globalError} onClearToast={clearToast} onClearGlobalError={clearGlobalError} />
-      <Header networkMode="local" mqttStatus="disconnected" bluetoothStatus={bluetoothStatus} showSettings={uiState.showSettings}
+      <Header networkMode="local" bluetoothStatus={bluetoothStatus} showSettings={uiState.showSettings}
         view={uiState.view} isAdmin={isAdmin} user={user} onViewChange={setView}
         onOpenGuide={() => updateUI({ showGuide: true })} onLogout={handleLogout}
         onOpenSettings={tab => updateUI({ settingsTab: tab, showSettings: true })}
@@ -455,8 +468,8 @@ export const App: React.FC = () => {
       <MainContent view={uiState.view} showSettings={uiState.showSettings} settingsTab={uiState.settingsTab}
         user={user} setUser={setUser} config={config} setConfig={setConfig} tempConfig={tempConfig} setTempConfig={setTempConfig}
         registeredUsers={registeredUsers} slots={slots} logs={logs} isAdmin={isAdmin} isSystemLocked={isSystemLocked}
-        setIsSystemLocked={setIsSystemLocked} mqttStatus="disconnected" bluetoothStatus={bluetoothStatus}
-        isCloudConnected={false} isMqttConnected={false} isBluetoothConnected={isBluetoothConnected}
+        setIsSystemLocked={setIsSystemLocked} bluetoothStatus={bluetoothStatus}
+        isCloudConnected={false} isBluetoothConnected={isBluetoothConnected}
         controllerStatus={controllerStatus} activeModuleIndex={activeModuleIndex} setActiveModuleIndex={setActiveModuleIndex}
         activeAdminModuleIndex={activeAdminModuleIndex} setActiveAdminModuleIndex={setActiveAdminModuleIndex}
         isAddingModule={isAddingModule} setIsAddingModule={setIsAddingModule} recentlyMaintained={recentlyMaintained}
@@ -474,9 +487,12 @@ export const App: React.FC = () => {
         onDeactivateUser={id => setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'inactive' } : u))}
         onActivateUser={id => setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'active' } : u))}
         onUnlockUser={id => setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'active' } : u))}
-        onDeleteUser={id => setRegisteredUsers(prev => prev.filter(u => u.id !== id))}
+        onDeleteUser={id => {
+          setRegisteredUsers(prev => prev.filter(u => u.id !== id));
+          deleteCloudUser(id).catch(() => {});
+        }}
         onUpdateUserCredentials={updated => setRegisteredUsers(prev => prev.map(u => u.id === updated.id ? updated : u))}
-        onAddUser={handleAddUser}
+        onAddUser={handleAdminAddUser}
         onAddModule={() => {
           setIsAddingModule(false);
           const newId = slots.length + 1;

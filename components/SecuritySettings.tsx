@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { SystemConfig } from '../types';
 
 interface SecuritySettingsProps {
@@ -10,16 +10,6 @@ interface SecuritySettingsProps {
 }
 
 export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ user, config, setConfig, onShowToast }) => {
-  const [is2faEnabled, setIs2faEnabled] = useState(true);
-
-  const toggle2fa = () => {
-    setIs2faEnabled(!is2faEnabled);
-    onShowToast({
-      title: is2faEnabled ? '2FA Disabled' : '2FA Enabled',
-      message: is2faEnabled ? 'System security downgraded.' : 'Added an extra layer of protection.',
-      type: is2faEnabled ? 'warning' : 'success'
-    });
-  };
 
   const toggleBiometric = () => {
     setConfig(prev => ({ ...prev, biometricEnabled: !prev.biometricEnabled }));
@@ -46,24 +36,6 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ user, config
       <div className="space-y-8">
         {/* Toggle Sections */}
         <div className="grid grid-cols-1 gap-4">
-          <div className="flex justify-between items-center p-6 bg-slate-50 rounded-[32px] border border-slate-100">
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${is2faEnabled ? 'bg-emerald-500 text-white shadow-emerald-100' : 'bg-slate-200 text-slate-400'}`}>
-                <i className="fa-solid fa-shield-halved"></i>
-              </div>
-              <div>
-                <p className="text-xs font-black text-slate-900 uppercase mb-0.5">Two-Factor Authentication</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Extra identity verification layer</p>
-              </div>
-            </div>
-            <button 
-              onClick={toggle2fa}
-              className={`w-14 h-7 rounded-full relative transition-all duration-300 ${is2faEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
-            >
-              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${is2faEnabled ? 'left-8' : 'left-1'}`}></div>
-            </button>
-          </div>
-
           {/* Session Timeout Config */}
           <div className="p-6 bg-slate-50 rounded-[32px] border border-slate-100 space-y-4">
             <div className="flex items-center justify-between">
@@ -98,21 +70,21 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ user, config
             </div>
           </div>
 
-          <div className="flex justify-between items-center p-6 bg-slate-50 rounded-[32px] border border-slate-100">
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${config.biometricEnabled ? 'bg-purple-500 text-white shadow-purple-100' : 'bg-slate-200 text-slate-400'}`}>
-                <i className="fa-solid fa-fingerprint"></i>
+          <div className="flex justify-between items-center p-4 md:p-6 bg-slate-50 rounded-[24px] md:rounded-[32px] border border-slate-100">
+            <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 transition-all ${config.biometricEnabled ? 'bg-purple-500 text-white shadow-purple-100' : 'bg-slate-200 text-slate-400'}`}>
+                <i className="fa-solid fa-fingerprint text-sm md:text-base"></i>
               </div>
-              <div>
-                <p className="text-xs font-black text-slate-900 uppercase mb-0.5">Biometric Sign-In</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Fingerprint / Face ID via WebAuthn</p>
+              <div className="min-w-0">
+                <p className="text-[11px] md:text-xs font-black text-slate-900 uppercase mb-0.5 truncate">Biometric Sign-In</p>
+                <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-tight truncate">Fingerprint / Face ID</p>
               </div>
             </div>
             <button 
               onClick={toggleBiometric}
-              className={`w-14 h-7 rounded-full relative transition-all duration-300 ${config.biometricEnabled ? 'bg-purple-500' : 'bg-slate-300'}`}
+              className={`w-12 h-6 md:w-14 md:h-7 rounded-full relative transition-all duration-300 shrink-0 ml-3 ${config.biometricEnabled ? 'bg-purple-500' : 'bg-slate-300'}`}
             >
-              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${config.biometricEnabled ? 'left-8' : 'left-1'}`}></div>
+              <div className={`absolute top-0.5 md:top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${config.biometricEnabled ? 'left-6 md:left-8' : 'left-0.5 md:left-1'}`}></div>
             </button>
           </div>
         </div>

@@ -7,7 +7,7 @@
     "db:migrate": "wrangler d1 execute key-cabinet-db --file=./migrations/0001_init.sql"
   },
   "dependencies": {
-    "@simplewebauthn/server": "^10.0.0",
+    "@simplewebauthn/server": "^13.3.2",
     "hono": "^4.0.0"
   },
   "devDependencies": {

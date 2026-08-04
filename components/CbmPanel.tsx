@@ -39,7 +39,7 @@ export const CbmPanel: React.FC<CbmPanelProps> = ({
             </div>
             <h3 className="font-black text-sm uppercase tracking-widest text-white">Maintenance Monitor</h3>
           </div>
-          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Tracking: Cabinet Solenoid & Key Microswitches</p>
+          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Usage Cycle Counter & Controller Status</p>
         </div>
         
         <div className="flex gap-3">
@@ -51,7 +51,9 @@ export const CbmPanel: React.FC<CbmPanelProps> = ({
           </div>
           <div className="flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-2xl border border-white/5" title="Real Time Clock Battery">
              <i className="fa-solid fa-battery-half text-[10px] text-emerald-400"></i>
-             <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">RTC 3.0V</span>
+             <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">
+               RTC {controllerStatus?.voltage != null ? `${controllerStatus.voltage.toFixed(1)}V` : '--'}
+             </span>
           </div>
         </div>
       </div>
@@ -59,11 +61,6 @@ export const CbmPanel: React.FC<CbmPanelProps> = ({
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 relative z-10">
         <div className="xl:col-span-8 space-y-8 max-h-[700px] overflow-y-auto custom-scrollbar pr-4 pb-4">
           {rackModules.map((module, mIdx) => {
-            const firstSlot = module[0];
-            const sharedVoltage = firstSlot?.voltage || 12.00;
-            const sharedLatency = firstSlot?.networkLatency || 45;
-            const isVoltageStable = sharedVoltage >= 11.5 && sharedVoltage <= 12.5;
-
             return (
               <div key={mIdx} className="bg-[#0f172a]/40 rounded-[32px] border border-white/5 overflow-hidden">
                 <div className="bg-white/5 p-4 px-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5">
@@ -73,29 +70,9 @@ export const CbmPanel: React.FC<CbmPanelProps> = ({
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{getRackName(mIdx)}</span>
                   </div>
-
-                  <div className="flex gap-6">
-                    <div className="flex flex-col items-end">
-                      <span className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">Input Voltage</span>
-                      <span className={`text-[10px] font-mono font-black ${isVoltageStable ? 'text-slate-300' : 'text-amber-400'}`}>
-                        {sharedVoltage.toFixed(2)}VDC
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-end">
-                      <span className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">Ping</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono font-black text-slate-300">
-                          {sharedLatency}ms
-                        </span>
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end">
-                      <span className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">Hardware</span>
-                      <span className="text-[10px] font-mono font-black text-blue-400">ESP32</span>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em]">Inputs</span>
+                    <span className="text-[10px] font-mono font-black text-slate-300">{module.length}</span>
                   </div>
                 </div>
 
@@ -135,7 +112,7 @@ export const CbmPanel: React.FC<CbmPanelProps> = ({
                             <div className="flex justify-between items-end mb-1">
                               <span className="text-[9px] font-black uppercase text-slate-200 truncate">{s.label.split('-')[1] || s.label}</span>
                               <span className={`text-[10px] font-mono font-black ${isCritical ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                {s.usageCount} <span className="text-[6px] opacity-40 uppercase">Clicks</span>
+                                {s.usageCount} <span className="text-[6px] opacity-40 uppercase">Cycles</span>
                               </span>
                             </div>
                             
@@ -153,7 +130,7 @@ export const CbmPanel: React.FC<CbmPanelProps> = ({
                         <div className="mt-3 flex justify-between items-center px-1">
                           <div className="flex items-center gap-1.5">
                             <i className="fa-solid fa-gears text-[7px] text-blue-400"></i>
-                            <span className="text-[7px] font-black uppercase text-slate-500 tracking-tighter">Usage (Microswitch)</span>
+                            <span className="text-[7px] font-black uppercase text-slate-500 tracking-tighter">Usage Cycles</span>
                           </div>
                           <span className={`text-[7px] font-black uppercase ${isCritical ? 'text-rose-500' : 'text-slate-500'}`}>
                             {Math.round(healthPercent)}% Life
@@ -174,27 +151,22 @@ export const CbmPanel: React.FC<CbmPanelProps> = ({
               <i className="fa-solid fa-terminal text-blue-500"></i> ESP32_KERNEL_LOG
             </h4>
             <div className="flex-1 bg-black/40 rounded-2xl p-4 font-mono text-[10px] leading-relaxed space-y-3 overflow-y-auto custom-scrollbar border border-white/5">
-              <div className="text-blue-400 opacity-80">[BOOT] ESP32-D0WDQ6 (Revision 1)</div>
+              <div className="text-blue-400 opacity-80">[SYS] KeyCabinet Controller</div>
               {isOnline ? (
                 <>
-                  <div className="text-emerald-500/70">[BLE] Advertising as KeyCabinet</div>
+                  <div className="text-emerald-500/70">[LINK] ESP32 ONLINE</div>
                   <div className="text-slate-500">[MAC] {controllerStatus?.mac || 'XX:XX:XX:XX:XX:XX'}</div>
-                  <div className="text-slate-400">[GPIO] Init Door Solenoid Relay</div>
-                  <div className="text-slate-400">[GPIO] Init Inputs 1-4 (Microswitches)</div>
-                  <div className="text-emerald-400/80">[RTC] Battery Voltage: 3.02V (OK)</div>
-                  <div className="text-amber-500/70 italic">[SYS] Heartbeat Active. ({controllerStatus?.lastSeen})</div>
+                  <div className="text-slate-500">[IP] {controllerStatus?.ip || '--'}</div>
+                  <div className="text-slate-500">[MODE] {controllerStatus?.mode || '--'}</div>
+                  <div className="text-slate-500">[RSSI] {controllerStatus?.rssi != null ? `${controllerStatus.rssi} dBm` : '--'}</div>
+                  <div className="text-slate-500">[HEARTBEAT] {controllerStatus?.lastSeen ? new Date(controllerStatus.lastSeen).toLocaleTimeString() : '--'}</div>
                 </>
               ) : (
                 <>
-                   <div className="text-rose-500/70">[ERR] Cloud Uplink Failed</div>
-                   <div className="text-slate-500">[WARN] Switching to Offline Mode...</div>
-                   <div className="text-amber-500">[BLE] Advertising as KeyCabinet</div>
-                   <div className="text-slate-400">[SYS] Waiting for Local Handshake...</div>
+                  <div className="text-rose-500/70">[LINK] ESP32 OFFLINE</div>
+                  <div className="text-slate-500">[SYS] Status unknown. Connect via BLE.</div>
                 </>
               )}
-              <div className="pt-4 mt-4 border-t border-white/5 text-[9px] text-slate-600">
-                Uptime: 03d 12h 45m
-              </div>
             </div>
           </div>
         </div>

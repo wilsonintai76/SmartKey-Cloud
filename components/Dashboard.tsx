@@ -29,7 +29,6 @@ interface DashboardProps {
   isHardwareTriggerActive?: boolean;
   controllerStatus?: ControllerStatus;
   isCloudConnected?: boolean;
-  isMqttConnected?: boolean;
   isBluetoothConnected?: boolean;
   bluetoothStatus?: string;
   onSwitchToLocalMode: () => void;
@@ -60,7 +59,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isHardwareTriggerActive = false,
   controllerStatus,
   isCloudConnected = false,
-  isMqttConnected = false,
   isBluetoothConnected = false,
   bluetoothStatus = 'disconnected',
   onSwitchToLocalMode,

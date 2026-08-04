@@ -90,7 +90,7 @@ export const SystemGuide: React.FC<SystemGuideProps> = ({ isOpen, onClose }) => 
                    </li>
                  </ul>
                  <p className="text-[9px] text-slate-500 italic mt-2 border-t border-white/10 pt-2">
-                   *The dashboard tracks "Cabinet Actuator Life" & "Microswitch Life" for safety.
+                   *The dashboard tracks per-slot borrow cycles (usage count) as a wear proxy. Actual solenoid/microswitch life is not measured by the firmware.
                  </p>
                </div>
 
@@ -164,7 +164,7 @@ export const SystemGuide: React.FC<SystemGuideProps> = ({ isOpen, onClose }) => 
                 </div>
                 <h4 className="text-xs font-black text-slate-900 uppercase mb-2">4. Store-and-Forward</h4>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Actions performed offline are buffered locally in IndexedDB. Once the <strong>Network Link</strong> is restored, the system batch-uploads logs to Cloudflare D1 via the Hono API to maintain data consistency.
+                  When online, audit events stream immediately to <strong>Cloudflare D1 (SQLite)</strong>. If the device is offline, events are queued in <strong>localStorage</strong> and automatically flushed when connectivity is restored — no data loss.
                 </p>
               </div>
             </div>

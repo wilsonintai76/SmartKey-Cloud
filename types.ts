@@ -36,8 +36,7 @@ export interface UserAccount {
   status: 'active' | 'locked' | 'pending' | 'inactive';
   role: 'staff' | 'admin' | '';
   avatar: string;
-  phone?: string;
-  macAddress?: string; // Digital Binding for Offline Access
+  contact?: string; // phone/email for contacting user
   userId?: string;  // 4-Digit User ID for Manual Offline Login
   offlinePin?: string; // New: Simple PIN for Manual Offline
 }
@@ -50,8 +49,6 @@ export interface SystemConfig {
   maintenanceThreshold: number;
   systemID: string;
   sessionTimeout: number;
-  offlineStorage: 'browser' | 'board';
-  adminEmail?: string;
   biometricEnabled: boolean; // toggle fingerprint/FaceID WebAuthn
 }
 

@@ -133,7 +133,7 @@ app.post('/api/audit/event', async (c) => {
  */
 app.get('/api/users', async (c) => {
   const users = await c.env.DB.prepare(
-    'SELECT id, username, display_name, staff_id FROM users ORDER BY created_at DESC'
+    'SELECT id, username, display_name, staff_id, role, contact FROM users ORDER BY created_at DESC'
   ).all();
   return c.json({ users: users.results });
 });
@@ -147,7 +147,7 @@ app.post('/api/auth/pin', async (c) => {
   if (!staffId || !pin) return c.json({ error: 'Staff ID and PIN required' }, 400);
 
   const user = await c.env.DB.prepare(
-    'SELECT id, username, display_name, staff_id FROM users WHERE staff_id = ? AND pin = ?'
+    'SELECT id, username, display_name, staff_id, role FROM users WHERE staff_id = ? AND pin = ?'
   ).bind(staffId, pin).first();
 
   if (!user) return c.json({ error: 'Invalid credentials' }, 401);
@@ -158,6 +158,7 @@ app.post('/api/auth/pin', async (c) => {
       id: user.id,
       name: user.display_name || user.username,
       staffId: user.staff_id,
+      role: (user as any).role || 'staff',
     },
   });
 });
@@ -192,6 +193,26 @@ app.post('/api/users/register', async (c) => {
   ).bind(id, username, name, staffId, pin, Date.now()).run();
 
   return c.json({ success: true, userId: id, existed: false });
+});
+
+/**
+ * DELETE /api/users/:id
+ * Delete a user and their associated credentials from D1.
+ */
+app.delete('/api/users/:id', async (c) => {
+  const userId = c.req.param('id');
+  const db = c.env.DB;
+
+  const user = await db.prepare('SELECT id FROM users WHERE id = ?').bind(userId).first();
+  if (!user) return c.json({ error: 'User not found' }, 404);
+
+  // Delete credentials first (foreign key)
+  await db.prepare('DELETE FROM credentials WHERE user_id = ?').bind(userId).run();
+  await db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run();
+  await db.prepare('DELETE FROM audit_logs WHERE user_id = ?').bind(userId).run();
+  await db.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
+
+  return c.json({ success: true });
 });
 
 // ── R2 Asset serving ──────────────────────────────────────────────

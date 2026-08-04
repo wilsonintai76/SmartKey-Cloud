@@ -3,7 +3,6 @@ sequenceDiagram
 
     actor User
     participant PWA as PWA (Browser)
-    participant IDB as IndexedDB
     participant ESP as ESP32
     participant Cloud as Cloudflare API
 
@@ -19,7 +18,10 @@ sequenceDiagram
     ESP->>ESP: Microswitch detects change
     ESP-->>PWA: BLE notify: key TAKEN/RETURNED
 
-    PWA->>IDB: Save log (synced=0)
-    PWA->>Cloud: POST sync log
-    Cloud->>Cloud: Store in D1
-    PWA->>IDB: Mark synced=1
+    alt Online
+        PWA->>Cloud: POST audit event
+        Cloud->>Cloud: Store in D1 (SQLite)
+    else Offline
+        PWA->>PWA: Queue in localStorage
+        Note over PWA,Cloud: Flushed when connectivity resumes
+    end

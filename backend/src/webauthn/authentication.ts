@@ -109,37 +109,39 @@ export async function verifySessionToken(
  * Generates authentication challenge for an existing user.
  */
 app.post('/auth/begin', async (c) => {
-  const { username } = await c.req.json<{ username: string }>();
-  if (!username?.trim()) return c.json({ error: 'Username required' }, 400);
-
+  const { username } = await c.req.json<{ username?: string }>();
   const db = c.env.DB;
   const env = getWebAuthnEnv(c);
 
-  const user = await db.prepare('SELECT id, username FROM users WHERE username = ?')
-    .bind(username).first();
-  if (!user) return c.json({ error: 'User not found' }, 404);
+  let allowCredentials: { id: string; transports?: AuthenticatorTransport[] }[] = [];
 
-  const creds = await db.prepare(
-    'SELECT credential_id, transports FROM credentials WHERE user_id = ?'
-  ).bind((user as any).id).all();
+  if (username?.trim()) {
+    // Username provided: look up specific user's credentials
+    const user = await db.prepare('SELECT id, username FROM users WHERE username = ?')
+      .bind(username).first();
+    if (!user) return c.json({ error: 'User not found' }, 404);
 
-  if (creds.results.length === 0) {
-    return c.json({ error: 'No biometric credential registered for this user. Please register first.' }, 400);
+    const creds = await db.prepare(
+      'SELECT credential_id, transports FROM credentials WHERE user_id = ?'
+    ).bind((user as any).id).all();
+
+    if (creds.results.length === 0) {
+      return c.json({ error: 'No biometric credential registered. Please register first.' }, 400);
+    }
+
+    allowCredentials = creds.results.map((cr: any) => {
+      let transports: AuthenticatorTransport[] = ['internal'];
+      try { transports = JSON.parse(cr.transports as string); } catch {}
+      return { id: cr.credential_id as string, transports };
+    });
   }
-
-  const allowCredentials = creds.results.map((c: any) => {
-    let transports: AuthenticatorTransport[] = ['internal'];
-    try { transports = JSON.parse(c.transports as string); } catch {}
-    return {
-      id: c.credential_id as string,
-      transports,
-    };
-  });
+  // username NOT provided: usernameless — browser shows native user picker (resident key)
 
   const options = await getAuthOptions(env, allowCredentials);
 
-  // Store challenge → userId mapping
-  await c.env.KV.put(`auth:${options.challenge}`, (user as any).id as string, { expirationTtl: 300 });
+  // Store challenge → userId mapping (for completion lookup)
+  const lookupKey = username?.trim() || '_discoverable';
+  await c.env.KV.put(`auth:${options.challenge}`, lookupKey, { expirationTtl: 300 });
   return c.json(options);
 });
 
@@ -155,13 +157,23 @@ app.post('/auth/complete', async (c) => {
   const kv = c.env.KV;
   const env = getWebAuthnEnv(c);
 
-  const userId = await kv.get(`auth:${challenge}`);
-  if (!userId) return c.json({ error: 'Challenge expired. Please try again.' }, 400);
+  const lookupKey = await kv.get(`auth:${challenge}`);
+  if (!lookupKey) return c.json({ error: 'Challenge expired. Please try again.' }, 400);
 
-  const cred = await db.prepare(
-    'SELECT credential_id, public_key, counter FROM credentials WHERE user_id = ?'
-  ).bind(userId).first();
-  if (!cred) return c.json({ error: 'Credential not found' }, 404);
+  // For usernameless (discoverable), find the credential by ID
+  let cred: any;
+  if (lookupKey === '_discoverable') {
+    const credId = assertionResponse.id;  // credential ID from browser
+    cred = await db.prepare(
+      'SELECT user_id, credential_id, public_key, counter FROM credentials WHERE credential_id = ?'
+    ).bind(credId).first();
+    if (!cred) return c.json({ error: 'Credential not found' }, 404);
+  } else {
+    cred = await db.prepare(
+      'SELECT user_id, credential_id, public_key, counter FROM credentials WHERE user_id = ?'
+    ).bind(lookupKey).first();
+    if (!cred) return c.json({ error: 'Credential not found' }, 404);
+  }
 
   let verification: Awaited<ReturnType<typeof verifyAuthenticationResponse>>;
   try {
@@ -191,20 +203,22 @@ app.post('/auth/complete', async (c) => {
 
   await kv.delete(`auth:${challenge}`);
 
+  const resolvedUserId = cred.user_id as string;
+
   // Get user info
   const user = await db.prepare('SELECT id, username, display_name FROM users WHERE id = ?')
-    .bind(userId).first();
+    .bind(resolvedUserId).first();
   if (!user) return c.json({ error: 'User not found' }, 404);
 
   // Create session token
   const token = await createSessionToken(
-    c.env as any, userId, (user as any).username, db
+    c.env as any, resolvedUserId, (user as any).username, db
   );
 
   // Audit log
   await db.prepare(
     'INSERT INTO audit_logs (user_id, action, device_info, created_at) VALUES (?, ?, ?, ?)'
-  ).bind(userId, 'login', c.req.header('User-Agent') || 'unknown', Date.now()).run();
+  ).bind(resolvedUserId, 'login', c.req.header('User-Agent') || 'unknown', Date.now()).run();
 
   return c.json({
     success: true,

@@ -21,19 +21,20 @@ flowchart TB
 
     subgraph Cloud["☁️ Cloudflare Backend"]
         Worker["Hono Worker"]
-        D1[("D1 Database")]
+        D1[("D1 Database (SQLite)")]
         KV[("KV Namespace")]
         Worker --> D1 & KV
     end
 
-    subgraph Storage["💾 Local Storage"]
-        IDB[("IndexedDB (Dexie)")]
+    subgraph Offline["📦 Offline Queue"]
+        LS[("localStorage Buffer")]
     end
 
     PWA <-->|"Web Bluetooth"| ESP
     PWA -->|"WebAuthn API"| Worker
-    PWA -->|"Log Sync"| Worker
-    PWA <-->|"Offline Buffer"| IDB
+    PWA -->|"Online: direct POST"| Worker
+    PWA -.->|"Offline: queue"| LS
+    LS -.->|"Reconnect: flush"| Worker
 
     style Hardware fill:#1a1a2e,color:#e94560,stroke:#e94560
     style PWA fill:#0f3460,color:#00b4d8,stroke:#00b4d8

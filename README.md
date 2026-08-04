@@ -2,7 +2,7 @@
 # SecureKey v3 — Key Management System
 
 ## System Overview
-The **SecureKey** is a PWA-controlled IoT key management system. An ESP32 Dev Board with a relay (solenoid lock) and microswitch detects key presence. The React PWA connects directly via Web Bluetooth (BLE), authenticates users with fingerprint/Face ID (WebAuthn), and logs all key events to local IndexedDB with automatic cloud sync to Cloudflare Workers (Hono + D1).
+The **SecureKey** is a PWA-controlled IoT key management system. An ESP32 Dev Board with a relay (solenoid lock) and microswitch detects key presence. The React PWA connects directly via Web Bluetooth (BLE), authenticates users with fingerprint/Face ID (WebAuthn), and logs all key events to Cloudflare D1 (SQLite) via the Hono API.
 
 ---
 
@@ -98,13 +98,13 @@ The system communicates directly with the ESP32 Dev Board via Bluetooth Low Ener
 For a workshop environment, Bluetooth Low Energy provides:
 *   **Direct peer-to-peer** — No router, no internet, no cloud dependency for core operations.
 *   **Low latency** — Unlock commands arrive in milliseconds.
-*   **Offline-first** — All logs are buffered in IndexedDB and synced to Cloudflare D1 when online.
+*   **Cloud-backed** — All logs are stored in Cloudflare D1 (SQLite) via the Hono API.
 
-### Offline Sync Logic
+### Audit Logging
 1.  **Key events** (TAKEN/RETURNED) are detected by the ESP32 microswitch and pushed via BLE notification.
-2.  **IndexedDB buffer** — The PWA stores all events locally with `synced: 0`.
-3.  **Background sync** — When the browser regains connectivity, logs are POSTed to the Cloudflare Hono API and marked `synced: 1` in IndexedDB.
-4.  The Cloudflare Worker stores them in D1 (SQLite-compatible) for permanent audit trail.
+2.  **Cloud audit** — The PWA posts events directly to the Cloudflare Hono API.
+3.  **Offline resilience** — If the device is offline, events are queued in `localStorage` and automatically flushed when connectivity returns.
+4.  The Cloudflare Worker stores them in D1 (SQLite) for a permanent audit trail.
 
 ---
 
@@ -114,8 +114,9 @@ For a workshop environment, Bluetooth Low Energy provides:
 *   **Backend:** Cloudflare Workers (Hono) + D1 + KV.
 *   **Auth:** WebAuthn (fingerprint/Face ID) + local PIN fallback.
 *   **Frontend:** React 18, TypeScript, Tailwind CSS, Vite PWA.
-*   **Offline Storage:** IndexedDB (Dexie.js).
-*   **Architecture:** Local-first with cloud sync (BLE + REST).
+*   **Database:** Cloudflare D1 (SQLite).
+*   **Offline Queue:** `localStorage` (lightweight, no dependencies).
+*   **Architecture:** Cloud-native with BLE + REST API.
 
 ---
 
@@ -126,3 +127,36 @@ $$Health \% = 100 - \left( \frac{\text{UsageCount}}{\text{Threshold}} \times 100
 
 *   **Cabinet Actuator Limit:** 50,000 cycles (Door Solenoid thermal fatigue).
 *   **Key Sensor Switch Limit:** 100,000 cycles (Microswitch mechanical spring fatigue per slot).
+
+---
+
+## Mobile App (Capacitor)
+
+The PWA can be wrapped as a native Android/iOS app using **Capacitor**.
+
+### Prerequisites
+- **Android:** Android Studio + SDK 34+
+- **iOS:** Xcode 16+ (macOS only)
+
+### Build & Run
+
+```bash
+# Build web app + sync to native projects
+npm run build:mobile
+
+# Open in native IDE
+npm run open:android   # Android Studio
+npm run open:ios       # Xcode
+```
+
+### Native plugins
+| Feature | Android | iOS | Plugin |
+|---|---|---|---|
+| BLE | ✅ | ✅ | `@capacitor-community/bluetooth-le` |
+| Biometrics | ✅ Fingerprint | ✅ Face ID | `@capgo/capacitor-native-biometric` |
+| Local DB | ✅ SQLite | ✅ SQLite | `@capacitor-community/sqlite` |
+
+### Architecture
+- **Web mode (PWA):** Uses Web Bluetooth + WebAuthn + localStorage/offline queue
+- **Native mode:** Uses Capacitor BLE + native biometrics + on-device SQLite
+- Auto-detected at runtime via `Capacitor.isNativePlatform()`

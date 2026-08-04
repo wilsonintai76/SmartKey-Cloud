@@ -6,7 +6,6 @@ import { CbmPanel } from './CbmPanel';
 import { GlobalPolicyConfig } from './GlobalPolicyConfig';
 import { HardwareRegistration } from './HardwareRegistration';
 import { RackTopology } from './RackTopology';
-import { SystemModules } from './SystemModules';
 import { CloudConnectionConfig } from './CloudConnectionConfig';
 import { ConnectivityStatus } from './ConnectivityStatus';
 
@@ -28,7 +27,7 @@ interface AdminHubProps {
   onUnlockUser: (id: string) => void;
   onDeleteUser: (id: string) => void;
   onUpdateUserCredentials?: (user: UserAccount) => void;
-  onAddUser?: (name: string, userId: string, pin: string, role: 'staff' | 'admin') => void;
+  onAddUser?: (name: string, staffId: string, pin: string, role: 'staff' | 'admin') => Promise<boolean>;
   onAddModule: () => void;
   onDeleteModule: (idx: number) => void;
   onUpdateSlotLabel: (id: number, label: string) => void;
@@ -131,18 +130,13 @@ export const AdminHub: React.FC<AdminHubProps> = ({
 
   if (!isAdminMode) return null;
 
+  // Add User state
   const [showAddUser, setShowAddUser] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserId, setNewUserId] = useState('');
   const [newUserPin, setNewUserPin] = useState('');
   const [newUserRole, setNewUserRole] = useState<'staff' | 'admin'>('staff');
-
-  const handleAddUser = () => {
-    if (!newUserName.trim() || !newUserId || newUserId.length !== 4 || !newUserPin || newUserPin.length < 4) return;
-    onAddUser?.(newUserName.trim(), newUserId, newUserPin, newUserRole);
-    setNewUserName(''); setNewUserId(''); setNewUserPin(''); setNewUserRole('staff');
-    setShowAddUser(false);
-  };
+  const [addUserStatus, setAddUserStatus] = useState('');
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn relative">
@@ -202,56 +196,6 @@ export const AdminHub: React.FC<AdminHubProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
           
-          {/* Add User Section */}
-          <div className="bg-white p-6 md:p-8 rounded-[40px] border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-black text-slate-900 text-sm uppercase flex items-center gap-3">
-                <i className="fa-solid fa-user-plus text-emerald-600"></i> User Management
-              </h3>
-              <button onClick={() => setShowAddUser(!showAddUser)}
-                className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-emerald-500 text-white hover:bg-emerald-600 transition-colors">
-                <i className={`fa-solid ${showAddUser ? 'fa-times' : 'fa-plus'} mr-1`}></i>
-                {showAddUser ? 'Cancel' : 'Add User'}
-              </button>
-            </div>
-            {showAddUser && (
-              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 space-y-3 animate-fadeIn">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">Full Name</label>
-                    <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)}
-                      placeholder="e.g. Ahmad"
-                      className="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-bold outline-none focus:border-emerald-400" />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">Role</label>
-                    <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as 'staff' | 'admin')}
-                      className="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-bold outline-none focus:border-emerald-400">
-                      <option value="staff">Staff</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">User ID (4-Digit)</label>
-                    <input type="text" maxLength={4} value={newUserId} onChange={e => setNewUserId(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="0000"
-                      className="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-mono font-bold outline-none focus:border-emerald-400" />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">PIN (4-6 Digit)</label>
-                    <input type="password" maxLength={6} value={newUserPin} onChange={e => setNewUserPin(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="••••••"
-                      className="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-mono font-bold outline-none focus:border-emerald-400" />
-                  </div>
-                </div>
-                <button onClick={handleAddUser}
-                  className="w-full py-2.5 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase hover:bg-emerald-600 transition-colors">
-                  Create User
-                </button>
-              </div>
-            )}
-          </div>
-
           <IdentityList 
             users={registeredUsers}
             isUserBorrowing={isUserBorrowing}
@@ -300,6 +244,66 @@ export const AdminHub: React.FC<AdminHubProps> = ({
             onUpdateUserCredentials={onUpdateUserCredentials}
           />
 
+          {/* Add User Section */}
+          <div className="bg-white p-6 md:p-8 rounded-[40px] border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-slate-900 text-sm uppercase flex items-center gap-3">
+                <i className="fa-solid fa-user-plus text-emerald-600"></i> Add User
+              </h3>
+              <button onClick={() => setShowAddUser(!showAddUser)}
+                className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-emerald-500 text-white hover:bg-emerald-600 transition-colors">
+                <i className={`fa-solid ${showAddUser ? 'fa-times' : 'fa-plus'} mr-1`}></i>
+                {showAddUser ? 'Cancel' : 'Add'}
+              </button>
+            </div>
+            {showAddUser && (
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 space-y-3 animate-fadeIn">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">Full Name</label>
+                    <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)}
+                      placeholder="e.g. Ahmad" className="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-bold outline-none focus:border-emerald-400" />
+                  </div>
+                  <div><label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">Role</label>
+                    <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as 'staff' | 'admin')}
+                      className="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-bold outline-none focus:border-emerald-400">
+                      <option value="staff">Staff</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div><label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">Staff ID (4-Digit)</label>
+                    <input type="text" maxLength={4} value={newUserId} onChange={e => setNewUserId(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="0000" className="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-mono font-bold outline-none focus:border-emerald-400" />
+                  </div>
+                  <div className="col-span-2"><label className="text-[9px] font-black uppercase text-slate-400 mb-1 block">PIN (4-6 Digit)</label>
+                    <input type="password" maxLength={6} value={newUserPin} onChange={e => setNewUserPin(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="••••••" className="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-mono font-bold outline-none focus:border-emerald-400" />
+                  </div>
+                </div>
+                {addUserStatus && (
+                  <p className={`text-[10px] font-bold text-center ${addUserStatus.includes('success') ? 'text-emerald-600' : 'text-rose-500'}`}>{addUserStatus}</p>
+                )}
+                <button onClick={async () => {
+                  if (!newUserName.trim() || !newUserId || newUserId.length !== 4 || !newUserPin || newUserPin.length < 4) {
+                    setAddUserStatus('All fields required. Staff ID=4 digits, PIN≥4 digits.');
+                    return;
+                  }
+                  setAddUserStatus('Registering...');
+                  const ok = onAddUser ? await onAddUser(newUserName.trim(), newUserId, newUserPin, newUserRole) : false;
+                  if (ok) {
+                    setAddUserStatus('User added!');
+                    setNewUserName(''); setNewUserId(''); setNewUserPin(''); setNewUserRole('staff');
+                    setShowAddUser(false);
+                  } else {
+                    setAddUserStatus('Failed. Staff ID may already exist.');
+                  }
+                }}
+                  className="w-full py-2.5 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase hover:bg-emerald-600 transition-colors">
+                  Create User
+                </button>
+              </div>
+            )}
+          </div>
+
           <CbmPanel 
             slots={slots}
             config={config}
@@ -323,16 +327,10 @@ export const AdminHub: React.FC<AdminHubProps> = ({
             currentUser={currentUser}
           />
 
-          <SystemModules 
-            config={config}
-            onUpdateConfig={onUpdateConfig}
-          />
-
           <GlobalPolicyConfig
             tempConfig={tempConfig}
             setTempConfig={setTempConfig}
             onSave={saveConfig}
-            isMqttConnected={false}
             isBluetoothConnected={isBluetoothConnected}
             bluetoothStatus={bluetoothStatus}
           />
@@ -362,9 +360,9 @@ export const AdminHub: React.FC<AdminHubProps> = ({
             onEmergencyRelease={onEmergencyRelease}
             onUnlockDoor={onUnlockDoor}
             isEmergencySequencing={isEmergencySequencing}
-            sequenceProgress={sequenceProgress}
             isHardwareTriggerActive={isHardwareTriggerActive}
             doorOpen={controllerStatus?.doorOpen}
+            controllerStatus={controllerStatus}
           />
         </div>
       </div>

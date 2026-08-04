@@ -29,7 +29,7 @@ export const MaintenanceForecast: React.FC<MaintenanceForecastProps> = ({ slots,
     if (criticalHealth.length > 0) {
       return `WARNING: Fatigue threshold reached for ${criticalHealth[0].label}. Dispatch technician for inspection.`;
     }
-    return "NOMINAL: All hardware nodes reporting standard mechanical resistance. Predictive models indicate stable operation.";
+    return "NOMINAL: All slots within usage limits. No maintenance due.";
   };
 
   return (
@@ -37,24 +37,22 @@ export const MaintenanceForecast: React.FC<MaintenanceForecastProps> = ({ slots,
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 relative z-10">
         <div>
           <h3 className="font-black text-lg tracking-tight flex items-center gap-3">
-            <i className={`fa-solid ${config.enableAI ? 'fa-wand-magic-sparkles text-amber-400' : 'fa-chart-line text-blue-400'}`}></i> 
-            {config.enableAI ? 'Predictive Maintenance Rail' : 'Statistical Wear Forecast'}
+            <i className="fa-solid fa-chart-line text-blue-400"></i>
+            Maintenance Forecast
           </h3>
-          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">Mean-Time-To-Failure (MTTF) Projection</p>
+          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">Cycle-Based Wear (Real Usage Data)</p>
         </div>
-        <span className="bg-white/5 px-3 py-1 rounded-full text-[9px] font-black uppercase text-amber-400 border border-white/5 backdrop-blur-sm">
-          {config.enableAI ? 'AI Active' : 'Linear Logic'}
+        <span className="bg-white/5 px-3 py-1 rounded-full text-[9px] font-black uppercase text-emerald-400 border border-white/5 backdrop-blur-sm">
+          Live Usage
         </span>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-10">
         {slots.map(s => {
-          const remainingCycles = config.maintenanceThreshold - s.usageCount;
-          const simulatedRate = config.enableAI ? ((s.id % 2 !== 0) ? 8 : 3) : 5;
-          const estDays = Math.max(0, Math.floor(remainingCycles / simulatedRate));
+          const remainingCycles = Math.max(0, config.maintenanceThreshold - s.usageCount);
           const healthValue = Math.max(0, 100 - (s.usageCount / config.maintenanceThreshold * 100));
-          const isCritical = healthValue < 20 || estDays < 7;
-          const isWarning = estDays < 14 && !isCritical;
+          const isCritical = healthValue < 20;
+          const isWarning = healthValue < 40 && !isCritical;
 
           return (
             <div 
@@ -71,8 +69,8 @@ export const MaintenanceForecast: React.FC<MaintenanceForecastProps> = ({ slots,
                 isWarning ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 
                 'bg-slate-800 border-white/5 text-slate-100'
               }`}>
-                <span className="text-xl font-black leading-none">{estDays}</span>
-                <span className="text-[7px] font-black uppercase tracking-widest mt-1 opacity-60">Days</span>
+                <span className="text-xl font-black leading-none">{Math.round(healthValue)}</span>
+                <span className="text-[7px] font-black uppercase tracking-widest mt-1 opacity-60">%</span>
               </div>
 
               {/* Forecasting Rail (Center) */}
@@ -101,8 +99,8 @@ export const MaintenanceForecast: React.FC<MaintenanceForecastProps> = ({ slots,
                    <span className={`text-[8px] font-black uppercase tracking-widest ${isCritical ? 'text-rose-500' : 'text-slate-500'}`}>
                      {isCritical ? 'URGENT INSPECTION' : isWarning ? 'SCHEDULE SERVICE' : 'STABLE ASSET'}
                    </span>
-                   <span className={`text-[8px] font-black uppercase ${isCritical ? 'text-rose-500' : 'text-slate-500'}`}>
-                     {Math.round(healthValue)}% MTBF
+                   <span className="text-[8px] font-black uppercase text-slate-500">
+                     {s.usageCount} / {config.maintenanceThreshold} cycles
                    </span>
                 </div>
               </div>
@@ -119,7 +117,7 @@ export const MaintenanceForecast: React.FC<MaintenanceForecastProps> = ({ slots,
         })}
       </div>
       
-      {/* Predictive Advisory Log */}
+      {/* Advisory Log */}
       <div className="mt-8 p-5 bg-black/40 rounded-2xl border border-white/5 relative overflow-hidden group">
          <div className="relative z-10 flex items-center gap-4">
            <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-500/20">

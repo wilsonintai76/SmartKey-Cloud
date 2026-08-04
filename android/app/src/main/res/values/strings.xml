@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SecureKey</string>
+    <string name="title_activity_main">SecureKey</string>
+    <string name="package_name">com.poliku.smartkey</string>
+    <string name="custom_url_scheme">com.poliku.smartkey</string>
+</resources>

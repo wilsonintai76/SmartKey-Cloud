@@ -19,7 +19,5 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   maintenanceThreshold: 300,
   systemID: 'SYS-001',
   sessionTimeout: 30,
-  offlineStorage: 'browser',
-  adminEmail: 'wilsonintai76@gmail.com',
-  biometricEnabled: false, // admin must opt-in via Security Settings
+  biometricEnabled: true, // biometric sign-in enabled by default
 };

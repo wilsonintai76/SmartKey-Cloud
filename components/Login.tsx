@@ -7,58 +7,43 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface LoginProps {
   onLogin: () => void;
-  onLocalLogin: (userId: string, pin: string) => boolean | Promise<boolean>;
+  onPinLogin: (userId: string, pin: string) => boolean | Promise<boolean>;
   onWebAuthnLogin?: (userId: string, userName: string, sessionToken?: string) => void;
   onWebAuthnRegister?: (userId: string, userName: string) => void;
-  onFirstTimeSetup?: (name: string, email: string, userId: string, pin: string) => void;
-  isFirstTime?: boolean;
+  onSelfRegister?: (name: string, staffId: string, pin: string) => Promise<boolean>;
   isAuthenticating: boolean;
   systemID: string;
-  isConnecting?: boolean; 
   bluetoothStatus?: string;
-  biometricEnabled?: boolean; // from SystemConfig
+  biometricEnabled?: boolean;
 }
 
 export const Login: React.FC<LoginProps> = ({ 
   onLogin, 
-  onLocalLogin,
+  onPinLogin,
   onWebAuthnLogin,
   onWebAuthnRegister,
-  onFirstTimeSetup,
-  isFirstTime = false,
+  onSelfRegister,
   isAuthenticating, 
   systemID,
-  isConnecting = false,
   bluetoothStatus = 'disconnected',
   biometricEnabled = false,
 }) => {
-  const [mode, setMode] = useState<'offline_menu' | 'offline_pin' | 'setup' | 'biometric_register'>(isFirstTime ? 'setup' : 'offline_menu');
+  const [mode, setMode] = useState<'main' | 'pin_login' | 'self_register'>('main');
   const [userId, setUserId] = useState('');
   const [pin, setPin] = useState('');
-  const [offlineStatus, setOfflineStatus] = useState('');
-  const [setupName, setSetupName] = useState('');
-  const [setupEmail, setSetupEmail] = useState('');
-  const [setupUserId, setSetupUserId] = useState('');
-  const [setupPin, setSetupPin] = useState('');
-  const [setupStatus, setSetupStatus] = useState('');
+  const [loginStatus, setLoginStatus] = useState('');
   const [discoveredDevices, setDiscoveredDevices] = useState<BluetoothDevice[]>([]);
-  const [fingerprintStatus, setFingerprintStatus] = useState('');
-  const [fingerprintUsername, setFingerprintUsername] = useState('');
-  const [registerUsername, setRegisterUsername] = useState('');
-  const [showDebug, setShowDebug] = useState(false);
+  // Self-register state
+  const [regName, setRegName] = useState('');
+  const [regStaffId, setRegStaffId] = useState('');
+  const [regPin, setRegPin] = useState('');
+  const [regStatus, setRegStatus] = useState('');
 
-  const {
-    isPlatformAvailable,
-    isLoading: isFingerprintLoading,
-    authenticate,
-    register,
-    error: fingerprintError,
-    user: webAuthnUser,
-    sessionToken,
-  } = useWebAuthn();
+  // WebAuthn — for biometric sign-in and profile enrollment
+  const { isPlatformAvailable, authenticateUsernameless, register, error: bioError, user: webAuthnUser, sessionToken } = useWebAuthn();
 
-  // Local binding to prevent minification/scope issues
   const platformAvailable = isPlatformAvailable;
+  const [bioStatus, setBioStatus] = useState('');
 
   // When WebAuthn hook sets a user, propagate to AppRoot with session token
   useEffect(() => {
@@ -68,7 +53,7 @@ export const Login: React.FC<LoginProps> = ({
   }, [webAuthnUser]);
 
   useEffect(() => {
-    if (mode === 'offline_menu' && navigator.bluetooth) {
+    if (mode === 'main' && navigator.bluetooth) {
       const unsub = bluetoothService.onDiscovery((devices) => {
         setDiscoveredDevices(devices);
       });
@@ -77,64 +62,35 @@ export const Login: React.FC<LoginProps> = ({
     }
   }, [mode]);
 
-  const handleManualOfflineAuth = async () => {
+  const handlePinLogin = async () => {
     if (!userId || !pin) return;
-    setOfflineStatus('Verifying Local Identity...');
+    setLoginStatus('Verifying credentials...');
     
     try {
-      const success = await Promise.resolve(onLocalLogin(userId, pin));
+      const success = await Promise.resolve(onPinLogin(userId, pin));
       if (success) {
-        setOfflineStatus('Success! Local Access Granted.');
+        setLoginStatus('Access Granted');
       } else {
-        setOfflineStatus('Access Denied: Invalid Credentials');
+        setLoginStatus('Invalid credentials');
       }
     } catch (error) {
-      setOfflineStatus('Access Denied: Error authenticating');
+      setLoginStatus('Connection error. Try again.');
     }
   };
 
-  const handleFingerprintLogin = async () => {
-    if (!fingerprintUsername.trim()) {
-      setFingerprintStatus('Please enter your username first.');
+  const handleSelfRegister = async () => {
+    if (!regName.trim() || !regStaffId || regStaffId.length !== 4 || !regPin || regPin.length < 4) {
+      setRegStatus('Staff ID must be 4 digits, PIN at least 4 digits.');
       return;
     }
-    setFingerprintStatus('Waiting for fingerprint...');
-    const success = await authenticate(fingerprintUsername.trim());
-    if (!success) {
-      setFingerprintStatus(fingerprintError || 'Fingerprint not recognized.');
-    }
-    // On success, the useEffect above will call onWebAuthnLogin via webAuthnUser
-  };
-
-  const handleFingerprintRegister = async () => {
-    if (!registerUsername.trim()) {
-      setFingerprintStatus('Please enter a username to register.');
-      return;
-    }
-    setFingerprintStatus('Waiting for biometric scan...');
-    const success = await register(registerUsername.trim());
-    if (success) {
-      setFingerprintStatus('Biometric registered successfully!');
-      onWebAuthnRegister?.(webAuthnUser?.id || '', registerUsername.trim());
-      // Auto-switch to login mode after successful registration
-      setTimeout(() => {
-        setFingerprintUsername(registerUsername.trim());
-        setMode('offline_menu');
-      }, 1500);
+    setRegStatus('Registering...');
+    const ok = onSelfRegister ? await onSelfRegister(regName.trim(), regStaffId, regPin) : false;
+    if (ok) {
+      setRegStatus('Account created! You can now sign in.');
+      setTimeout(() => { setMode('main'); setRegStatus(''); }, 2000);
     } else {
-      setFingerprintStatus(fingerprintError || 'Registration failed. Please try again.');
+      setRegStatus('Registration failed. Staff ID may already exist.');
     }
-  };
-
-  const handleFirstTimeSetupSubmit = () => {
-    if (!setupName.trim() || !setupUserId || setupUserId.length !== 4 || !setupPin || setupPin.length < 4) {
-      setSetupStatus('Please fill all fields. User ID must be 4 digits, PIN at least 4 digits.');
-      return;
-    }
-    setSetupStatus('Creating admin account...');
-    onFirstTimeSetup?.(setupName.trim(), setupEmail.trim(), setupUserId, setupPin);
-    setSetupStatus('Account created! Redirecting to login...');
-    setTimeout(() => setMode('offline_menu'), 1500);
   };
 
   return (
@@ -153,52 +109,7 @@ export const Login: React.FC<LoginProps> = ({
           <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">SecureKey</h1>
           <p className="text-slate-500 mb-8 text-sm font-bold uppercase tracking-widest opacity-60">Key Management System</p>
           
-          {mode === 'setup' && (
-             <div className="space-y-4 animate-fadeIn text-left">
-                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-emerald-800 text-xs font-medium mb-4">
-                  <p className="font-black uppercase mb-1">🔐 First Time Setup</p>
-                  Create your admin account. User ID must be exactly 4 digits, PIN at least 4 digits.
-                </div>
-
-                <div>
-                   <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Full Name</label>
-                   <Input value={setupName} onChange={e => setSetupName(e.target.value)}
-                     placeholder="e.g. Ahmad Zaki" className="min-h-[48px]" />
-                </div>
-
-                <div>
-                   <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email (optional)</label>
-                   <Input type="email" value={setupEmail} onChange={e => setSetupEmail(e.target.value)}
-                     placeholder="admin@workshop.com" className="min-h-[48px]" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Staff ID (4-Digit)</label>
-                     <Input maxLength={4} value={setupUserId} onChange={e => setSetupUserId(e.target.value.replace(/[^0-9]/g, ''))}
-                       placeholder="0000" className="text-center font-mono text-lg min-h-[48px]" />
-                  </div>
-                  <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 ml-1">PIN (4-6 Digit)</label>
-                     <Input type="password" maxLength={6} value={setupPin} onChange={e => setSetupPin(e.target.value.replace(/[^0-9]/g, ''))}
-                       placeholder="••••••" className="text-center font-mono text-lg min-h-[48px]" />
-                  </div>
-                </div>
-
-                {setupStatus && (
-                  <p className={`text-[10px] font-bold text-center uppercase ${setupStatus.includes('created') ? 'text-emerald-500' : setupStatus.includes('fill') ? 'text-amber-500' : 'text-blue-500'}`}>
-                    {setupStatus}
-                  </p>
-                )}
-
-                <Button onClick={handleFirstTimeSetupSubmit} size="lg"
-                  className="w-full min-h-[52px] bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-wider">
-                  Create Admin Account
-                </Button>
-             </div>
-          )}
-
-          {mode === 'offline_menu' && (
+          {mode === 'main' && (
              <div className="space-y-4 animate-fadeIn">
                 {/* BLE Status — distinct states */}
                 <div className={`p-4 rounded-2xl border text-xs font-medium mb-4 ${
@@ -255,58 +166,18 @@ export const Login: React.FC<LoginProps> = ({
                    ))}
                  </div>
 
-                 {/* ── Biometric Authentication (WebAuthn) ────────────── */}
-                 {biometricEnabled && platformAvailable !== null && (
-                   <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-2xl border border-purple-100 text-left">
-                     <p className="text-[10px] font-black uppercase text-purple-700 mb-3">
-                       <i className="fa-solid fa-fingerprint mr-1"></i>
-                       Biometric Sign-In
-                     </p>
-
-                     {platformAvailable ? (
-                       <>
-                         <input
-                           type="text"
-                           value={fingerprintUsername}
-                           onChange={e => setFingerprintUsername(e.target.value)}
-                           placeholder="Username"
-                           className="w-full bg-white border border-purple-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-purple-400 mb-2 min-h-[48px]"
-                           disabled={isFingerprintLoading}
-                         />
-                         <div className="flex gap-2">
-                           <button
-                             onClick={handleFingerprintLogin}
-                             disabled={isFingerprintLoading || !fingerprintUsername.trim()}
-                             className="flex-1 py-3 rounded-xl font-black uppercase text-[11px] tracking-wider bg-purple-600 text-white active:bg-purple-700 disabled:opacity-50 transition-colors duration-150 min-h-[48px]"
-                           >
-                             {isFingerprintLoading ? (
-                               <><i className="fa-solid fa-spinner animate-spin mr-1"></i>Scanning</>
-                             ) : 'Sign In'}
-                           </button>
-                           <button
-                             onClick={() => { setRegisterUsername(fingerprintUsername); setMode('biometric_register'); }}
-                             disabled={isFingerprintLoading}
-                             className="px-3 py-3 rounded-xl font-black uppercase text-[11px] tracking-wider bg-white border-2 border-purple-200 text-purple-600 active:border-purple-400 transition-colors duration-150 min-h-[48px]"
-                           >
-                             Register
-                           </button>
-                         </div>
-                         {fingerprintStatus && (
-                           <p className={`text-[10px] font-bold mt-2 text-center ${
-                             fingerprintStatus.includes('success') || fingerprintStatus.includes('Waiting')
-                               ? 'text-purple-600' : 'text-rose-500'
-                           }`}>
-                             {fingerprintStatus}
-                           </p>
-                         )}
-                       </>
-                     ) : (
-                       <p className="text-[10px] font-bold text-slate-500 text-center py-2">
-                         <i className="fa-solid fa-triangle-exclamation mr-1 text-amber-500"></i>
-                         No biometric enrolled on this device. Use PIN below.
-                       </p>
-                     )}
-                   </div>
+                 {/* Biometric Sign-In — only on devices with platform authenticator */}
+                 {biometricEnabled && platformAvailable === true && (window as any).Capacitor?.isNativePlatform?.() !== true && (
+                   <button onClick={async () => {
+                     setBioStatus('Scanning...');
+                     const ok = await authenticateUsernameless();
+                     if (!ok) setBioStatus(bioError || 'Not recognized');
+                   }}
+                   className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-wider flex items-center justify-center gap-3 bg-purple-600 text-white active:bg-purple-700 transition-colors duration-150 min-h-[52px]"
+                   >
+                     <i className="fa-solid fa-fingerprint text-lg"></i>
+                     {bioStatus || 'Sign In with Biometric'}
+                   </button>
                  )}
 
                  <div className="relative py-4">
@@ -314,21 +185,28 @@ export const Login: React.FC<LoginProps> = ({
                       <div className="w-full border-t border-slate-100"></div>
                     </div>
                     <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest">
-                      <span className="bg-white px-4 text-slate-300">Or use fallback</span>
+                      <span className="bg-white px-4 text-slate-300">Sign in</span>
                     </div>
                  </div>
 
                  <button 
-                   onClick={() => setMode('offline_pin')}
+                   onClick={() => setMode('pin_login')}
                    className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-wider flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-600 active:border-blue-400 active:text-blue-600 transition-colors duration-150 min-h-[52px]"
                  >
                    <i className="fa-solid fa-keyboard"></i>
-                   Sign In with Staff ID / PIN
+                   Sign In with Staff ID + PIN
+                 </button>
+
+                 <button 
+                   onClick={() => setMode('self_register')}
+                   className="w-full py-3 text-[11px] font-bold uppercase text-slate-400 hover:text-emerald-500 text-center"
+                 >
+                   <i className="fa-solid fa-user-plus mr-1"></i> Register as New User
                  </button>
              </div>
           )}
 
-          {mode === 'offline_pin' && (
+          {mode === 'pin_login' && (
              <div className="space-y-4 animate-fadeIn text-left">
                 <div>
                    <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Staff ID (4-Digit)</label>
@@ -354,105 +232,63 @@ export const Login: React.FC<LoginProps> = ({
                    />
                 </div>
 
-                {offlineStatus && (
-                  <p className={`text-[10px] font-bold text-center ${offlineStatus.includes('Success') ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {offlineStatus}
+                {loginStatus && (
+                  <p className={`text-[10px] font-bold text-center ${loginStatus.includes('Granted') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {loginStatus}
                   </p>
                 )}
 
-                <Button onClick={handleManualOfflineAuth} size="lg"
-                   className="w-full min-h-[52px] bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider">
+                <button onClick={handlePinLogin}
+                   className="w-full min-h-[52px] bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider rounded-2xl">
                    Verify & Sign In
-                 </Button>
+                 </button>
 
                  <button 
-                   onClick={() => setMode('offline_menu')}
+                   onClick={() => setMode('main')}
                    className="w-full py-3 text-[11px] font-bold uppercase text-slate-400 active:text-slate-600 text-center min-h-[44px] flex items-center justify-center"
                  >
                    <i className="fa-solid fa-arrow-left mr-2"></i> Back
                  </button>
              </div>
           )}
-
-          {mode === 'biometric_register' && (
+          {mode === 'self_register' && (
              <div className="space-y-4 animate-fadeIn text-left">
-                <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 text-purple-800 text-xs font-medium mb-4">
-                  <p className="font-black uppercase mb-1">🔐 Biometric Enrollment</p>
-                  Your fingerprint or face scan stays on your device. Only a public key is stored on the server.
-                  {platformAvailable && (
-                    <span className="block mt-1 text-emerald-600">
-                      <i className="fa-solid fa-circle-check mr-1"></i>
-                      Platform authenticator detected (Touch ID / Face ID / Windows Hello)
-                    </span>
-                  )}
-                  {platformAvailable === false && (
-                    <span className="block mt-1 text-amber-600">
-                      <i className="fa-solid fa-triangle-exclamation mr-1"></i>
-                      No platform biometric detected on this device.
-                    </span>
-                  )}
+                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-emerald-800 text-xs font-medium mb-4">
+                  <p className="font-black uppercase mb-1">📝 Register New Account</p>
+                  Create your account. Staff ID must be 4 digits, PIN at least 4 digits.
                 </div>
 
-                {/* Debug Panel — tap to toggle */}
-                <button
-                  onClick={() => setShowDebug(!showDebug)}
-                  className="w-full text-[9px] font-bold uppercase text-slate-400 hover:text-slate-600 text-center"
-                >
-                  <i className={`fa-solid fa-${showDebug ? 'chevron-up' : 'bug'} mr-1`}></i>
-                  {showDebug ? 'Hide Diagnostics' : 'Show Diagnostics'}
-                </button>
-                {showDebug && (
-                  <div className="bg-slate-900 text-green-400 p-3 rounded-xl text-[9px] font-mono space-y-1 overflow-x-auto">
-                    <div><span className="text-slate-500">isSecureContext:</span> {String(window.isSecureContext)}</div>
-                    <div><span className="text-slate-500">origin:</span> {window.location.origin}</div>
-                    <div><span className="text-slate-500">platformAuth:</span> {platformAvailable === null ? 'checking...' : String(platformAvailable)}</div>
-                    <div><span className="text-slate-500">biometricEnabled:</span> {String(biometricEnabled)}</div>
-                    <div><span className="text-slate-500">fingerprintError:</span> <span className="text-rose-400">{fingerprintError || 'none'}</span></div>
-                    <div><span className="text-slate-500">fingerprintStatus:</span> {fingerprintStatus || 'idle'}</div>
-                    <div><span className="text-slate-500">isLoading:</span> {String(isFingerprintLoading)}</div>
+                <div><label className="text-[10px] font-black uppercase text-slate-400 ml-1">Full Name</label>
+                  <input type="text" value={regName} onChange={e => setRegName(e.target.value)}
+                    placeholder="Your name" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold outline-none focus:border-emerald-400 min-h-[48px]" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-[10px] font-black uppercase text-slate-400 ml-1">Staff ID (4-Digit)</label>
+                    <input maxLength={4} value={regStaffId} onChange={e => setRegStaffId(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="0000" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400 min-h-[48px]" />
                   </div>
-                )}
-
-                <div>
-                   <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Username</label>
-                   <input
-                     type="text"
-                     value={registerUsername}
-                     onChange={e => setRegisterUsername(e.target.value)}
-                     placeholder="e.g. admin"
-                     className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold outline-none focus:border-purple-400 min-h-[48px]"
-                     disabled={isFingerprintLoading}
-                   />
+                  <div><label className="text-[10px] font-black uppercase text-slate-400 ml-1">PIN (4-6 Digit)</label>
+                    <input type="password" maxLength={6} value={regPin} onChange={e => setRegPin(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="••••••" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-center font-mono font-bold text-lg outline-none focus:border-emerald-400 min-h-[48px]" />
+                  </div>
                 </div>
 
-                {fingerprintStatus && (
-                  <p className={`text-[10px] font-bold text-center ${
-                    fingerprintStatus.includes('success') ? 'text-emerald-500' :
-                    fingerprintStatus.includes('Waiting') || fingerprintStatus.includes('Scanning') ? 'text-purple-500' : 'text-rose-500'
-                  }`}>
-                    {fingerprintStatus}
+                {regStatus && (
+                  <p className={`text-[10px] font-bold text-center ${regStatus.includes('created') ? 'text-emerald-500' : regStatus.includes('fill') || regStatus.includes('failed') ? 'text-rose-500' : 'text-blue-500'}`}>
+                    {regStatus}
                   </p>
                 )}
 
-                <Button
-                   onClick={handleFingerprintRegister}
-                   disabled={isFingerprintLoading || !registerUsername.trim()}
-                   size="lg"
-                   className="w-full min-h-[52px] bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-wider mt-2"
-                 >
-                   {isFingerprintLoading ? (
-                     <><i className="fa-solid fa-spinner animate-spin mr-2"></i>Scanning Fingerprint...</>
-                   ) : (
-                     <><i className="fa-solid fa-fingerprint mr-2"></i>Enroll Biometric</>
-                   )}
-                 </Button>
+                <button onClick={handleSelfRegister}
+                  className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white min-h-[52px]">
+                  Create Account
+                </button>
 
-                 <button 
-                   onClick={() => setMode('offline_menu')}
-                   className="w-full py-3 text-[11px] font-bold uppercase text-slate-400 active:text-slate-600 text-center min-h-[44px] flex items-center justify-center"
-                 >
-                   Back to Sign In
-                 </button>
+                <button onClick={() => setMode('offline_menu')}
+                  className="w-full py-3 text-[11px] font-bold uppercase text-slate-400 active:text-slate-600 text-center min-h-[44px] flex items-center justify-center">
+                  <i className="fa-solid fa-arrow-left mr-2"></i> Back
+                </button>
              </div>
           )}
           

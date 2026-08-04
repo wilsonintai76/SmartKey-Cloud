@@ -4,9 +4,19 @@
  *
  * Session tokens are stored in sessionStorage (cleared on tab close)
  * and used to authenticate audit log writes and BLE door commands.
+ *
+ * NOTE: WebAuthn requires a valid HTTPS origin matching the RP ID.
+ * In Capacitor native mode, WebAuthn is unavailable — use native biometrics instead.
+ * Non-WebAuthn APIs (audit, users, PIN) use the full Worker URL when available.
  */
 
+// WebAuthn endpoints — must be same-origin for RP ID matching
+// In PWA: proxied by Pages Function at /api/webauthn/*
+// In native: hidden (use native biometrics instead)
 const API_BASE = import.meta.env.VITE_WEBAUTHN_API || '/api/webauthn';
+
+// Non-WebAuthn endpoints — use env var (native) or relative path (PWA/proxied)
+const USERS_API = import.meta.env.VITE_CLOUD_API?.replace('/sync', '') || '/api';
 const AUDIT_API = import.meta.env.VITE_AUDIT_API || '/api/audit';
 
 export interface WebAuthnUser {
@@ -67,11 +77,11 @@ export async function completeRegistration(userId: string, attestationResponse: 
 
 // ── Authentication ────────────────────────────────────────────────
 
-export async function beginAuthentication(username: string) {
+export async function beginAuthentication(username?: string) {
   const res = await fetch(`${API_BASE}/auth/begin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username }),
+    body: JSON.stringify({ username: username || '' }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -143,14 +153,14 @@ export async function logoutSession(): Promise<void> {
 
 // ── Cross-device PIN auth (cloud-backed) ──────────────────────────
 
-const USERS_API = import.meta.env.VITE_CLOUD_API?.replace('/sync', '') || '/api';
-
 export interface CloudUser {
   id: string;
   name: string;
   staffId: string;
   username?: string;
   display_name?: string;
+  role?: string;
+  contact?: string;
 }
 
 export interface PinAuthResult {
@@ -170,6 +180,8 @@ export async function fetchCloudUsers(): Promise<CloudUser[]> {
       staffId: u.staff_id,
       username: u.username,
       display_name: u.display_name,
+      role: u.role || 'staff',
+      contact: u.contact || '',
     }));
   } catch {
     return [];
@@ -200,6 +212,32 @@ export async function registerCloudUser(name: string, staffId: string, pin: stri
       body: JSON.stringify({ name, staffId, pin }),
     });
     return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Delete a user from D1 */
+export async function deleteCloudUser(userId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${USERS_API}/users/${userId}`, { method: 'DELETE' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Check if a user already has WebAuthn credentials in D1 */
+export async function checkExistingCredentials(username: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/register/begin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.alreadyRegistered === true;
   } catch {
     return false;
   }

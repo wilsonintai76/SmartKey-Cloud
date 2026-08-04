@@ -55,8 +55,7 @@ export const KeyCard: React.FC<KeyCardProps> = ({
   
   const [elapsed, setElapsed] = useState<number>(0);
 
-  // Microswitch Life Calculation
-  // We track the microswitch spring life as the limiting factor for this key slot
+  // Usage cycle health (real borrow counter vs maintenance threshold)
   const usageRatio = Math.min(1, slot.usageCount / maintenanceThreshold);
   const healthPercent = Math.round((1 - usageRatio) * 100);
   
@@ -178,7 +177,7 @@ export const KeyCard: React.FC<KeyCardProps> = ({
              </div>
            ) : (
              <p className={`text-[9px] font-black uppercase tracking-[0.3em] ${isQueued ? 'text-yellow-600' : isCritical ? 'text-amber-600' : 'text-slate-400'}`}>
-               {isQueued ? 'Waiting for Door...' : isUnlocked ? 'Door Unlocked...' : isSystemLocked ? 'Lockdown Active' : isCritical ? 'Inspect Sensor' : 'Key Detected'}
+               {isQueued ? 'Waiting for Door...' : isUnlocked ? 'Door Unlocked...' : isSystemLocked ? 'Lockdown Active' : isCritical ? 'Maintenance Due' : 'Key Detected'}
              </p>
            )}
         </div>
@@ -192,7 +191,7 @@ export const KeyCard: React.FC<KeyCardProps> = ({
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center gap-1.5">
               <i className={`fa-solid fa-gears text-[10px] ${isCritical ? 'text-rose-500' : 'text-slate-400'}`}></i>
-              <span className={`text-[8px] font-black uppercase tracking-widest ${isCritical ? 'text-amber-700' : 'text-slate-500'}`}>Microswitch Wear</span>
+              <span className={`text-[8px] font-black uppercase tracking-widest ${isCritical ? 'text-amber-700' : 'text-slate-500'}`}>Usage Cycles</span>
             </div>
             <span className={`text-[9px] font-black ${isCritical ? 'text-rose-500' : isWarning ? 'text-amber-500' : 'text-emerald-500'}`}>
               {healthPercent}%
@@ -211,7 +210,7 @@ export const KeyCard: React.FC<KeyCardProps> = ({
                {slot.usageCount} / {maintenanceThreshold} Cycles
              </span>
              {isCritical && (
-               <span className="text-[7px] font-black text-rose-500 uppercase animate-pulse">Sensor Failure Risk</span>
+               <span className="text-[7px] font-black text-rose-500 uppercase animate-pulse">Service Due</span>
              )}
           </div>
         </div>
