@@ -1,10 +1,16 @@
 
 import { ControllerStatus } from '../types';
-
-// KeyCabinet BLE UUIDs (matches ESP32 firmware)
-const SERVICE_UUID    = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-const WRITE_CHAR_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-const STATUS_CHAR_UUID = 'd3e5c4d6-8a9b-4e2c-9f1d-6a7b8c9d0e1f';
+import { SERVICE_UUID, WRITE_CHAR_UUID, STATUS_CHAR_UUID } from './bleUuids';
+import {
+  isNative,
+  onCapacitorBleStatus,
+  onCapacitorBleData,
+  onCapacitorBleKeyPresence,
+  connectCapacitorBle,
+  sendCapacitorBleCommand,
+  sendCapacitorBleUnlock,
+  disconnectCapacitorBle,
+} from './capacitorService';
 
 export type BluetoothStatus = 'disconnected' | 'scanning' | 'connecting' | 'connected' | 'error';
 export type KeyPresenceCallback = (keyPresent: boolean) => void;
@@ -22,8 +28,30 @@ export class BluetoothService {
   private onDataReceivedCallbacks: ((data: string) => void)[] = [];
   private onDiscoveryCallbacks: ((devices: BluetoothDevice[]) => void)[] = [];
   private onKeyPresenceCallbacks: KeyPresenceCallback[] = [];
+  private capacitorBridgeAttached = false;
 
-  constructor() {}
+  constructor() {
+    // In the Capacitor native shell, route BLE through the native plugin.
+    this.attachCapacitorBridge();
+  }
+
+  /** Bridge native (Capacitor) BLE events into this service's callback model. */
+  private attachCapacitorBridge() {
+    if (this.capacitorBridgeAttached || !isNative) return;
+    this.capacitorBridgeAttached = true;
+
+    onCapacitorBleStatus(status => {
+      this.setStatus(status as BluetoothStatus);
+    });
+
+    onCapacitorBleData(data => {
+      this.onDataReceivedCallbacks.forEach(cb => cb(data));
+    });
+
+    onCapacitorBleKeyPresence(keyPresent => {
+      this.onKeyPresenceCallbacks.forEach(cb => cb(keyPresent));
+    });
+  }
 
   // ── Status helpers ──────────────────────────────────────────────
 
@@ -66,6 +94,21 @@ export class BluetoothService {
   // ── Scanning ────────────────────────────────────────────────────
 
   public async startScanning(): Promise<void> {
+    // Capacitor native: the system BLE picker handles scan + connect in one step
+    if (isNative) {
+      try {
+        const device = await connectCapacitorBle();
+        if (device) {
+          const discovered = { id: device.deviceId, name: device.name ?? 'KeyCabinet' } as unknown as BluetoothDevice;
+          this.discoveredDevices = [discovered];
+          this.onDiscoveryCallbacks.forEach(cb => cb(this.discoveredDevices));
+        }
+      } catch (err: any) {
+        console.error('Native BLE scan failed:', err?.message || String(err));
+      }
+      return;
+    }
+
     if (!navigator.bluetooth) {
       this.setStatus('error');
       return;
@@ -95,6 +138,11 @@ export class BluetoothService {
   // ── Connect ─────────────────────────────────────────────────────
 
   public async connect(): Promise<void> {
+    if (isNative) {
+      await connectCapacitorBle();
+      return;
+    }
+
     if (!navigator.bluetooth) {
       throw new Error('Web Bluetooth is not supported in this browser. Please use Chrome or Edge on Desktop/Android.');
     }
@@ -119,6 +167,12 @@ export class BluetoothService {
   }
 
   public async connectToDevice(device: BluetoothDevice): Promise<void> {
+    // In native mode the system picker already connects during scan.
+    if (isNative) {
+      console.log('Native BLE already connected via requestDevice.');
+      return;
+    }
+
     try {
       this.setStatus('connecting');
       this.device = device;
@@ -168,6 +222,10 @@ export class BluetoothService {
   }
 
   public disconnect() {
+    if (isNative) {
+      disconnectCapacitorBle();
+      return;
+    }
     if (this.device && this.device.gatt?.connected) {
       this.device.gatt.disconnect();
     }
@@ -193,6 +251,10 @@ export class BluetoothService {
 
   /** Send byte 0x01 to trigger the solenoid unlock */
   public async unlock(): Promise<void> {
+    if (isNative) {
+      await sendCapacitorBleUnlock();
+      return;
+    }
     if (!this.writeCharacteristic) {
       throw new Error('Not connected to KeyCabinet');
     }
@@ -207,6 +269,10 @@ export class BluetoothService {
 
   /** Legacy sendCommand — for backward compatibility with AppRoot.tsx */
   public async sendCommand(command: string): Promise<void> {
+    if (isNative) {
+      await sendCapacitorBleCommand(command);
+      return;
+    }
     if (!this.writeCharacteristic) {
       throw new Error('Not connected to KeyCabinet');
     }

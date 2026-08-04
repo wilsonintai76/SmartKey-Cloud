@@ -34,13 +34,14 @@ export async function verifyBiometrics(
       return { success: false, error: 'Biometrics not available on this device' };
     }
 
-    const result = await NativeBiometric.verifyIdentity({
+    // verifyIdentity resolves on success and throws on failure/cancel
+    await NativeBiometric.verifyIdentity({
       reason,
       title: 'SecureKey Authentication',
       subtitle: 'Verify your identity',
       description: 'Use biometrics to unlock the app',
     });
-    return { success: result.verified };
+    return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || 'Biometric verification failed' };
   }
@@ -58,19 +59,20 @@ export async function checkBiometricsAvailable(): Promise<boolean> {
 
 // ── BLE (cross-platform) ──────────────────────────────────────────
 
-import { BleClient, BleDevice, numbersToDataView, dataViewToNumbers } from '@capacitor-community/bluetooth-le';
+import { BleClient, BleDevice } from '@capacitor-community/bluetooth-le';
+import { SERVICE_UUID, WRITE_CHAR_UUID, STATUS_CHAR_UUID } from './bleUuids';
 
 let connectedDevice: BleDevice | null = null;
-const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
-const CHAR_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 
 export type CapacitorBleStatus = 'disconnected' | 'scanning' | 'connecting' | 'connected' | 'error';
 
 type BleStatusCallback = (status: CapacitorBleStatus) => void;
 type BleDataCallback = (data: string) => void;
+type BleKeyPresenceCallback = (keyPresent: boolean) => void;
 
 let statusCallbacks: BleStatusCallback[] = [];
 let dataCallbacks: BleDataCallback[] = [];
+let keyPresenceCallbacks: BleKeyPresenceCallback[] = [];
 
 export function onCapacitorBleStatus(cb: BleStatusCallback) {
   statusCallbacks.push(cb);
@@ -82,11 +84,26 @@ export function onCapacitorBleData(cb: BleDataCallback) {
   return () => { dataCallbacks = dataCallbacks.filter(c => c !== cb); };
 }
 
+export function onCapacitorBleKeyPresence(cb: BleKeyPresenceCallback) {
+  keyPresenceCallbacks.push(cb);
+  return () => { keyPresenceCallbacks = keyPresenceCallbacks.filter(c => c !== cb); };
+}
+
 function notifyStatus(status: CapacitorBleStatus) {
   statusCallbacks.forEach(cb => cb(status));
 }
 
-export async function connectCapacitorBle(): Promise<void> {
+/** Firmware status byte notification: 0x01 = key in cabinet, 0x00 = taken */
+function handleStatusByte(value: DataView) {
+  const byte = value.getUint8(0);
+  if (byte !== 0x00 && byte !== 0x01) return;
+  const keyPresent = byte === 0x01;
+  keyPresenceCallbacks.forEach(cb => cb(keyPresent));
+  const statusStr = keyPresent ? 'KEY_RETURNED' : 'KEY_TAKEN';
+  dataCallbacks.forEach(cb => cb(statusStr));
+}
+
+export async function connectCapacitorBle(): Promise<{ deviceId: string; name: string | null } | null> {
   if (!isNative) {
     notifyStatus('error');
     throw new Error('BLE not available in browser mode. Use Web Bluetooth API.');
@@ -110,13 +127,13 @@ export async function connectCapacitorBle(): Promise<void> {
     await BleClient.connect(device.deviceId);
     connectedDevice = device;
 
-    await BleClient.startNotifications(device.deviceId, SERVICE_UUID, CHAR_UUID, (value) => {
-      const decoder = new TextDecoder('utf-8');
-      const data = decoder.decode(value);
-      dataCallbacks.forEach(cb => cb(data));
+    // Subscribe to key-presence notifications on the firmware STATUS characteristic
+    await BleClient.startNotifications(device.deviceId, SERVICE_UUID, STATUS_CHAR_UUID, (value) => {
+      handleStatusByte(value);
     });
 
     notifyStatus('connected');
+    return { deviceId: device.deviceId, name: device.name ?? null };
   } catch (err: any) {
     notifyStatus('error');
     throw err;
@@ -126,8 +143,14 @@ export async function connectCapacitorBle(): Promise<void> {
 export async function sendCapacitorBleCommand(command: string): Promise<void> {
   if (!connectedDevice) throw new Error('Not connected');
   const encoder = new TextEncoder();
-  const data = encoder.encode(command);
-  await BleClient.write(connectedDevice.deviceId, SERVICE_UUID, CHAR_UUID, data);
+  const bytes = encoder.encode(command + '\n');
+  await BleClient.write(connectedDevice.deviceId, SERVICE_UUID, WRITE_CHAR_UUID, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+}
+
+/** Send byte 0x01 to trigger the solenoid unlock (matches firmware WriteCallbacks) */
+export async function sendCapacitorBleUnlock(): Promise<void> {
+  if (!connectedDevice) throw new Error('Not connected');
+  await BleClient.write(connectedDevice.deviceId, SERVICE_UUID, WRITE_CHAR_UUID, new DataView(new Uint8Array([1]).buffer));
 }
 
 export function disconnectCapacitorBle(): void {
@@ -148,12 +171,12 @@ export async function initLocalDatabase(): Promise<void> {
   if (!isNative) return;
 
   try {
-    const info = await CapacitorSQLite.createConnection({
+    await CapacitorSQLite.createConnection({
       database: 'smartkey',
       version: 1,
-      readOnly: false,
+      readonly: false,
     });
-    db = info;
+    db = await CapacitorSQLite.retrieveConnection('smartkey', false);
     await db.open();
 
     // Create local tables
