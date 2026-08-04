@@ -132,6 +132,12 @@ export async function connectCapacitorBle(): Promise<{ deviceId: string; name: s
       handleStatusByte(value);
     });
 
+    // Read current state immediately — firmware only notifies on change, not on connect
+    try {
+      const current = await BleClient.read(device.deviceId, SERVICE_UUID, STATUS_CHAR_UUID);
+      handleStatusByte(current);
+    } catch { /* characteristic may not be readable on all firmware builds */ }
+
     notifyStatus('connected');
     return { deviceId: device.deviceId, name: device.name ?? null };
   } catch (err: any) {

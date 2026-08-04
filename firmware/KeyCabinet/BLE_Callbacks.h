@@ -12,6 +12,10 @@ class MyServerCallbacks : public BLEServerCallbacks {
     deviceConnected = true;
     digitalWrite(LED_PIN, HIGH);
     Serial.println(">>> Phone CONNECTED");
+    // Push current end-switch state immediately so phone doesn't wait for a change
+    uint8_t statusByte = keyPresent ? 0x01 : 0x00;
+    pStatusCharacteristic->setValue(&statusByte, 1);
+    pStatusCharacteristic->notify();
   }
 
   void onDisconnect(BLEServer* pServer) override {

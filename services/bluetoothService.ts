@@ -195,6 +195,12 @@ export class BluetoothService {
         this.handleStatusNotification.bind(this),
       );
 
+      // Read current state immediately — firmware only notifies on change, not on connect
+      try {
+        const currentValue = await this.statusCharacteristic.readValue();
+        this.processStatusValue(currentValue);
+      } catch { /* ignore if characteristic is notify-only */ }
+
       this.setStatus('connected');
       console.log('BLE connected to KeyCabinet:', device.name);
     } catch (error: any) {
@@ -234,17 +240,19 @@ export class BluetoothService {
 
   // ── Key Presence Notifications (ESP32 → PWA) ────────────────────
 
-  private handleStatusNotification(event: Event) {
-    const char = event.target as BluetoothRemoteGATTCharacteristic;
-    const value = char.value?.getUint8(0);
-    if (value === undefined) return;
-
-    const keyPresent = value === 0x01; // 0x01 = key in cabinet, 0x00 = taken
+  /** Process a DataView from the STATUS characteristic (0x01 = key in, 0x00 = taken) */
+  private processStatusValue(dv: DataView) {
+    const byte = dv.getUint8(0);
+    if (byte !== 0x00 && byte !== 0x01) return;
+    const keyPresent = byte === 0x01;
     this.onKeyPresenceCallbacks.forEach(cb => cb(keyPresent));
-
-    // Also forward as a string for backward compatibility with onDataReceived
     const statusStr = keyPresent ? 'KEY_RETURNED' : 'KEY_TAKEN';
     this.onDataReceivedCallbacks.forEach(cb => cb(statusStr));
+  }
+
+  private handleStatusNotification(event: Event) {
+    const char = event.target as BluetoothRemoteGATTCharacteristic;
+    if (char.value) this.processStatusValue(char.value);
   }
 
   // ── Unlock Command (PWA → ESP32) ────────────────────────────────
